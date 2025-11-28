@@ -2,8 +2,6 @@
 // import { collection, addDoc, getDocs, updateDoc, doc, query, where, Timestamp, getDoc } from 'firebase/firestore'
 // import { db, auth } from '@/lib/firebase'
 
-
-
 // export interface Project {
 //   id: string
 //   companyId: string
@@ -14,9 +12,9 @@
 //   description?: string
 //   startDate: Date
 //   status: 'Open' | 'Completed'
+//   analysisProgress: number        // ✅ NOUVEAU - Remplace progress
 //   analysisComplete: boolean
 //   reportsCount: number
-//   progress: number
 //   createdAt: Date
 //   updatedAt: Date
 // }
@@ -56,9 +54,9 @@
 //     startDate: startDateTimestamp,
 //     userId: auth.currentUser?.uid,
 //     status: 'Open',
+//     analysisProgress: 0,           // ✅ NOUVEAU
 //     analysisComplete: false,
 //     reportsCount: 0,
-//     progress: 0,
 //     createdAt: Timestamp.now(),
 //     updatedAt: Timestamp.now()
 //   })
@@ -145,93 +143,117 @@
 // }
 
 // export async function getProjectById(projectId: string): Promise<Project | null> {
-//     console.log('[Project Service] getProjectById called with:', projectId)
-//     console.log('[Project Service] Current user:', auth.currentUser?.uid)
-    
-//     try {
-//       const projectRef = doc(db, 'projects', projectId)
-//       console.log('[Project Service] Project ref created:', projectRef.path)
-      
-//       const projectSnap = await getDoc(projectRef)
-//       console.log('[Project Service] getDoc completed, exists:', projectSnap.exists())
-      
-//       if (!projectSnap.exists()) {
-//         console.log('[Project Service] Project not found in Firestore')
-//         return null
-//       }
-      
-//       const data = projectSnap.data()
-//       console.log('[Project Service] Raw project data:', data)
-      
-//       // Vérifier que le projet appartient à l'utilisateur actuel
-//       if (data.userId !== auth.currentUser?.uid) {
-//         console.warn('[Project Service] Project does not belong to current user')
-//         console.log('[Project Service] Project userId:', data.userId)
-//         console.log('[Project Service] Current userId:', auth.currentUser?.uid)
-//         return null
-//       }
-      
-//       const project = {
-//         id: projectSnap.id,
-//         ...data,
-//         startDate: data.startDate?.toDate ? data.startDate.toDate() : new Date(data.startDate),
-//         createdAt: data.createdAt?.toDate(),
-//         updatedAt: data.updatedAt?.toDate()
-//       } as Project
-      
-//       console.log('[Project Service] Returning project:', project)
-//       return project
-//     } catch (error) {
-//       console.error('[Project Service] Error fetching project:', error)
-//       throw error
-//     }
-//   }
-
-
-//   export async function updateProjectProgress(projectId: string) {
-//     console.log('[Project Service] Updating project progress:', projectId)
-    
-//     // Compter les analyses terminées
-//     const analysesQuery = query(
-//       collection(db, 'analyses'),
-//       where('projectId', '==', projectId),
-//       where('userId', '==', auth.currentUser?.uid)
-//     )
-    
-//     const analysesSnap = await getDocs(analysesQuery)
-//     const analyses = analysesSnap.docs.map(doc => doc.data())
-//     const completedAnalyses = analyses.filter(a => a.status === 'Completed').length
-//     const hasAtLeastOneCompleted = completedAnalyses > 0
-    
-//     // Compter les rapports publiés
-//     const reportsQuery = query(
-//       collection(db, 'reports'),
-//       where('projectId', '==', projectId),
-//       where('userId', '==', auth.currentUser?.uid),
-//       where('status', '==', 'Published')
-//     )
-    
-//     const reportsSnap = await getDocs(reportsQuery)
-//     const reportsCount = reportsSnap.size
-    
-//     const progress = Math.min(Math.round((completedAnalyses / 4) * 100), 100)
-    
+//   console.log('[Project Service] getProjectById called with:', projectId)
+//   console.log('[Project Service] Current user:', auth.currentUser?.uid)
+  
+//   try {
 //     const projectRef = doc(db, 'projects', projectId)
-//     await updateDoc(projectRef, {
-//       analysisComplete: hasAtLeastOneCompleted,
-//       progress: progress,
-//       reportsCount: reportsCount,
-//       updatedAt: Timestamp.now()
-//     })
+//     console.log('[Project Service] Project ref created:', projectRef.path)
     
-//     console.log('[Project Service] Project progress updated:', {
-//       completedAnalyses,
-//       hasAtLeastOneCompleted,
-//       progress,
-//       reportsCount
-//     })
+//     const projectSnap = await getDoc(projectRef)
+//     console.log('[Project Service] getDoc completed, exists:', projectSnap.exists())
+    
+//     if (!projectSnap.exists()) {
+//       console.log('[Project Service] Project not found in Firestore')
+//       return null
+//     }
+    
+//     const data = projectSnap.data()
+//     console.log('[Project Service] Raw project data:', data)
+    
+//     // Vérifier que le projet appartient à l'utilisateur actuel
+//     if (data.userId !== auth.currentUser?.uid) {
+//       console.warn('[Project Service] Project does not belong to current user')
+//       console.log('[Project Service] Project userId:', data.userId)
+//       console.log('[Project Service] Current userId:', auth.currentUser?.uid)
+//       return null
+//     }
+    
+//     const project = {
+//       id: projectSnap.id,
+//       ...data,
+//       startDate: data.startDate?.toDate ? data.startDate.toDate() : new Date(data.startDate),
+//       createdAt: data.createdAt?.toDate(),
+//       updatedAt: data.updatedAt?.toDate()
+//     } as Project
+    
+//     console.log('[Project Service] Returning project:', project)
+//     return project
+//   } catch (error) {
+//     console.error('[Project Service] Error fetching project:', error)
+//     throw error
+//   }
+// }
+
+// export async function updateProjectProgress(projectId: string) {
+//   console.log('[Project Service] Updating project progress:', projectId)
+  
+//   const analysesQuery = query(
+//     collection(db, 'analyses'),
+//     where('projectId', '==', projectId),
+//     where('userId', '==', auth.currentUser?.uid)
+//   )
+  
+//   const analysesSnap = await getDocs(analysesQuery)
+//   const analyses = analysesSnap.docs.map(doc => doc.data())
+  
+//   const totalAnalyses = analyses.length
+//   const completedAnalyses = analyses.filter(a => a.status === 'Completed').length
+  
+//   const analysisProgress = totalAnalyses > 0 
+//     ? Math.round((completedAnalyses / totalAnalyses) * 100)
+//     : 0
+  
+//   const reportsQuery = query(
+//     collection(db, 'reports'),
+//     where('projectId', '==', projectId),
+//     where('userId', '==', auth.currentUser?.uid),
+//     where('status', '==', 'Published')
+//   )
+  
+//   const reportsSnap = await getDocs(reportsQuery)
+//   const reportsCount = reportsSnap.size
+  
+//   // ✅ Bouclage automatique si 4 analyses terminées
+//   const shouldAutoComplete = completedAnalyses === 4
+  
+//   const projectRef = doc(db, 'projects', projectId)
+  
+//   const updateData: any = {
+//     analysisProgress,
+//     reportsCount,
+//     updatedAt: Timestamp.now()
 //   }
   
+//   // ✅ Ne modifier analysisComplete que si auto-bouclage
+//   if (shouldAutoComplete) {
+//     updateData.analysisComplete = true
+//   }
+  
+//   await updateDoc(projectRef, updateData)
+  
+//   console.log('[Project Service] Project progress updated:', {
+//     totalAnalyses,
+//     completedAnalyses,
+//     analysisProgress,
+//     reportsCount,
+//     autoCompleted: shouldAutoComplete
+//   })
+// }
+
+// // ✅ NOUVELLE FONCTION - Boucler la phase d'analyse
+// export async function completeAnalysisPhase(projectId: string) {
+//   console.log('[Project Service] Completing analysis phase for project:', projectId)
+  
+//   const projectRef = doc(db, 'projects', projectId)
+//   await updateDoc(projectRef, {
+//     analysisComplete: true,
+//     updatedAt: Timestamp.now()
+//   })
+  
+//   console.log('[Project Service] Analysis phase marked as complete')
+// }
+
 
 
 
@@ -249,7 +271,7 @@ export interface Project {
   description?: string
   startDate: Date
   status: 'Open' | 'Completed'
-  analysisProgress: number        // ✅ NOUVEAU - Remplace progress
+  analysisProgress: number
   analysisComplete: boolean
   reportsCount: number
   createdAt: Date
@@ -265,7 +287,6 @@ export async function createProject(data: {
 }) {
   console.log('[Project Service] Creating project:', data)
   
-  // Vérifier les doublons
   const existingQuery = query(
     collection(db, 'projects'),
     where('companyId', '==', data.companyId),
@@ -291,7 +312,7 @@ export async function createProject(data: {
     startDate: startDateTimestamp,
     userId: auth.currentUser?.uid,
     status: 'Open',
-    analysisProgress: 0,           // ✅ NOUVEAU
+    analysisProgress: 0,
     analysisComplete: false,
     reportsCount: 0,
     createdAt: Timestamp.now(),
@@ -312,10 +333,8 @@ export async function updateProject(
 ) {
   console.log('[Project Service] Updating project:', projectId, data)
   
-  // Récupérer le projet actuel pour vérifier les doublons
   const projectRef = doc(db, 'projects', projectId)
   
-  // Vérifier les doublons (exclure le projet en cours de modification)
   const existingQuery = query(
     collection(db, 'projects'),
     where('userId', '==', auth.currentUser?.uid),
@@ -398,7 +417,6 @@ export async function getProjectById(projectId: string): Promise<Project | null>
     const data = projectSnap.data()
     console.log('[Project Service] Raw project data:', data)
     
-    // Vérifier que le projet appartient à l'utilisateur actuel
     if (data.userId !== auth.currentUser?.uid) {
       console.warn('[Project Service] Project does not belong to current user')
       console.log('[Project Service] Project userId:', data.userId)
@@ -422,55 +440,6 @@ export async function getProjectById(projectId: string): Promise<Project | null>
   }
 }
 
-// // ✅ NOUVELLE FONCTION - Calcul de la progression des analyses uniquement
-// export async function updateProjectProgress(projectId: string) {
-//   console.log('[Project Service] Updating project progress:', projectId)
-  
-//   // Compter toutes les analyses du projet
-//   const analysesQuery = query(
-//     collection(db, 'analyses'),
-//     where('projectId', '==', projectId),
-//     where('userId', '==', auth.currentUser?.uid)
-//   )
-  
-//   const analysesSnap = await getDocs(analysesQuery)
-//   const analyses = analysesSnap.docs.map(doc => doc.data())
-  
-//   const totalAnalyses = analyses.length
-//   const completedAnalyses = analyses.filter(a => a.status === 'Completed').length
-  
-//   // Calculer la progression des analyses (0-100%)
-//   const analysisProgress = totalAnalyses > 0 
-//     ? Math.round((completedAnalyses / totalAnalyses) * 100)
-//     : 0
-  
-//   // Compter les rapports publiés
-//   const reportsQuery = query(
-//     collection(db, 'reports'),
-//     where('projectId', '==', projectId),
-//     where('userId', '==', auth.currentUser?.uid),
-//     where('status', '==', 'Published')
-//   )
-  
-//   const reportsSnap = await getDocs(reportsQuery)
-//   const reportsCount = reportsSnap.size
-  
-//   const projectRef = doc(db, 'projects', projectId)
-//   await updateDoc(projectRef, {
-//     analysisProgress,           // ✅ NOUVEAU
-//     reportsCount,
-//     updatedAt: Timestamp.now()
-//     // ⚠️ NE PAS modifier analysisComplete ici (géré manuellement)
-//   })
-  
-//   console.log('[Project Service] Project progress updated:', {
-//     totalAnalyses,
-//     completedAnalyses,
-//     analysisProgress,
-//     reportsCount
-//   })
-// }
-
 export async function updateProjectProgress(projectId: string) {
   console.log('[Project Service] Updating project progress:', projectId)
   
@@ -486,6 +455,7 @@ export async function updateProjectProgress(projectId: string) {
   const totalAnalyses = analyses.length
   const completedAnalyses = analyses.filter(a => a.status === 'Completed').length
   
+  // ✅ CORRECTION - Calculer le pourcentage correctement
   const analysisProgress = totalAnalyses > 0 
     ? Math.round((completedAnalyses / totalAnalyses) * 100)
     : 0
@@ -500,8 +470,8 @@ export async function updateProjectProgress(projectId: string) {
   const reportsSnap = await getDocs(reportsQuery)
   const reportsCount = reportsSnap.size
   
-  // ✅ Bouclage automatique si 4 analyses terminées
-  const shouldAutoComplete = completedAnalyses === 4
+  // ✅ CORRECTION - Bouclage automatique UNIQUEMENT si exactement 4 analyses terminées
+  const shouldAutoComplete = completedAnalyses === 4 && totalAnalyses === 4
   
   const projectRef = doc(db, 'projects', projectId)
   
@@ -511,8 +481,9 @@ export async function updateProjectProgress(projectId: string) {
     updatedAt: Timestamp.now()
   }
   
-  // ✅ Ne modifier analysisComplete que si auto-bouclage
+  // ✅ Ne boucler automatiquement QUE si 4 analyses exactement
   if (shouldAutoComplete) {
+    console.log('[Project Service] Auto-completing analysis phase (4 analyses completed)')
     updateData.analysisComplete = true
   }
   
@@ -527,9 +498,9 @@ export async function updateProjectProgress(projectId: string) {
   })
 }
 
-// ✅ NOUVELLE FONCTION - Boucler la phase d'analyse
+// ✅ Fonction de bouclage manuel (inchangée)
 export async function completeAnalysisPhase(projectId: string) {
-  console.log('[Project Service] Completing analysis phase for project:', projectId)
+  console.log('[Project Service] Manually completing analysis phase for project:', projectId)
   
   const projectRef = doc(db, 'projects', projectId)
   await updateDoc(projectRef, {
@@ -537,5 +508,5 @@ export async function completeAnalysisPhase(projectId: string) {
     updatedAt: Timestamp.now()
   })
   
-  console.log('[Project Service] Analysis phase marked as complete')
+  console.log('[Project Service] Analysis phase manually marked as complete')
 }

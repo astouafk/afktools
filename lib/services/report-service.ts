@@ -1,20 +1,20 @@
 // // lib/services/report-service.ts
-// import { collection, addDoc, getDocs, getDoc, doc, query, where, Timestamp, updateDoc } from 'firebase/firestore'
+// import { collection, addDoc, getDocs, getDoc, doc, query, where, Timestamp, updateDoc, deleteDoc } from 'firebase/firestore'
 // import { db, auth } from '@/lib/firebase'
 
 // export interface Task {
 //   id: string
 //   description: string
-//   assignedTo?: string // ID du membre
+//   assignedTo?: string
 //   completed: boolean
 // }
 
 // export interface Blocker {
-//     id: string
-//     description: string
-//     level: 'high' | 'medium' | 'low'
-//     mitigation?: string
-//   }
+//   id: string
+//   description: string
+//   level: 'high' | 'medium' | 'low'
+//   mitigation?: string
+// }
 
 // export interface Report {
 //   id: string
@@ -27,12 +27,14 @@
 //   currentStep: number
 //   summary: string
 //   tasks: Task[]
-//   blockers:  Blocker[]
+//   blockers: Blocker[]
 //   nextWeekObjectives: string[]
 //   createdAt: Date
 //   updatedAt: Date
 // }
 
+
+// // lib/services/report-service.ts
 // export async function createReport(data: {
 //   projectId: string
 //   weekNumber: number
@@ -45,27 +47,55 @@
 //   nextWeekObjectives?: string[]
 // }) {
 //   console.log('[Report Service] Creating report:', data)
+//   console.log('[Report Service] Current user:', auth.currentUser?.uid)
   
-//   // Vérifier doublon : même projet + même numéro de semaine
-//   const existingQuery = query(
+//   // Vérification doublon par weekNumber
+//   const existingWeekQuery = query(
 //     collection(db, 'reports'),
 //     where('projectId', '==', data.projectId),
 //     where('userId', '==', auth.currentUser?.uid),
 //     where('weekNumber', '==', data.weekNumber)
 //   )
   
-//   const existingSnapshot = await getDocs(existingQuery)
+//   const existingWeekSnapshot = await getDocs(existingWeekQuery)
+//   console.log('[Report Service] Found by weekNumber:', existingWeekSnapshot.size)
   
-//   if (!existingSnapshot.empty) {
-//     throw new Error(`Un rapport existe déjà pour la semaine ${data.weekNumber} de ce projet`)
+//   if (!existingWeekSnapshot.empty) {
+//     const existingId = existingWeekSnapshot.docs[0].id
+//     console.log('[Report Service] Duplicate found:', existingId)
+//     throw new Error(`Un rapport existe déjà pour la semaine ${data.weekNumber} de ce projet (ID: ${existingId})`)
 //   }
   
+//   // Vérification doublon par dates
+//   const startTimestamp = Timestamp.fromDate(new Date(data.startDate))
+//   const endTimestamp = Timestamp.fromDate(new Date(data.endDate))
+  
+//   const existingDatesQuery = query(
+//     collection(db, 'reports'),
+//     where('projectId', '==', data.projectId),
+//     where('userId', '==', auth.currentUser?.uid),
+//     where('startDate', '==', startTimestamp),
+//     where('endDate', '==', endTimestamp)
+//   )
+  
+//   const existingDatesSnapshot = await getDocs(existingDatesQuery)
+//   console.log('[Report Service] Found by dates:', existingDatesSnapshot.size)
+  
+//   if (!existingDatesSnapshot.empty) {
+//     const existingId = existingDatesSnapshot.docs[0].id
+//     console.log('[Report Service] Duplicate found:', existingId)
+//     throw new Error(
+//       `Un rapport existe déjà pour la période du ${new Date(data.startDate).toLocaleDateString('fr-FR')} au ${new Date(data.endDate).toLocaleDateString('fr-FR')} (ID: ${existingId}).`
+//     )
+//   }
+  
+//   // Créer le rapport
 //   const docRef = await addDoc(collection(db, 'reports'), {
 //     projectId: data.projectId,
 //     userId: auth.currentUser?.uid,
 //     weekNumber: data.weekNumber,
-//     startDate: Timestamp.fromDate(new Date(data.startDate)),
-//     endDate: Timestamp.fromDate(new Date(data.endDate)),
+//     startDate: startTimestamp,
+//     endDate: endTimestamp,
 //     status: 'Draft',
 //     currentStep: data.currentStep || 0,
 //     summary: data.summary || '',
@@ -80,14 +110,13 @@
 //   return docRef.id
 // }
 
-  
 // export async function updateReport(
 //   reportId: string,
 //   data: {
 //     currentStep?: number
 //     summary?: string
 //     tasks?: Task[]
-//     blockers?: string[]
+//     blockers?: Blocker[]  // ✅ CHANGÉ DE string[] À Blocker[]
 //     nextWeekObjectives?: string[]
 //     status?: 'Draft' | 'Published'
 //   }
@@ -133,67 +162,73 @@
 //   return sorted
 // }
 
-
 // export async function getReportById(reportId: string): Promise<Report | null> {
-//     console.log('[Report Service] Fetching report:', reportId)
+//   console.log('[Report Service] Fetching report:', reportId)
+  
+//   try {
+//     const reportRef = doc(db, 'reports', reportId)
+//     const reportSnap = await getDoc(reportRef)
     
-//     try {
-//       const reportRef = doc(db, 'reports', reportId)
-//       const reportSnap = await getDoc(reportRef)
-      
-//       if (!reportSnap.exists()) {
-//         return null
-//       }
-      
-//       const data = reportSnap.data()
-      
-//       if (data.userId !== auth.currentUser?.uid) {
-//         return null
-//       }
-      
-//       return {
-//         id: reportSnap.id,
-//         ...data,
-//         startDate: data.startDate?.toDate(),
-//         endDate: data.endDate?.toDate(),
-//         createdAt: data.createdAt?.toDate(),
-//         updatedAt: data.updatedAt?.toDate(),
-//         tasks: data.tasks || [],
-//         blockers: data.blockers || [],
-//         nextWeekObjectives: data.nextWeekObjectives || []
-//       } as Report
-//     } catch (error) {
-//       console.error('[Report Service] Error fetching report:', error)
-//       throw error
+//     if (!reportSnap.exists()) {
+//       return null
 //     }
+    
+//     const data = reportSnap.data()
+    
+//     if (data.userId !== auth.currentUser?.uid) {
+//       return null
+//     }
+    
+//     return {
+//       id: reportSnap.id,
+//       ...data,
+//       startDate: data.startDate?.toDate(),
+//       endDate: data.endDate?.toDate(),
+//       createdAt: data.createdAt?.toDate(),
+//       updatedAt: data.updatedAt?.toDate(),
+//       tasks: data.tasks || [],
+//       blockers: data.blockers || [],
+//       nextWeekObjectives: data.nextWeekObjectives || []
+//     } as Report
+//   } catch (error) {
+//     console.error('[Report Service] Error fetching report:', error)
+//     throw error
 //   }
+// }
 
-//   export async function getAllReports(): Promise<Report[]> {
-//     console.log('[Report Service] Fetching all reports')
-    
-//     const q = query(
-//       collection(db, 'reports'),
-//       where('userId', '==', auth.currentUser?.uid)
-//     )
-    
-//     const snapshot = await getDocs(q)
-//     const reports = snapshot.docs.map(doc => {
-//       const data = doc.data()
-//       return {
-//         id: doc.id,
-//         ...data,
-//         startDate: data.startDate?.toDate(),
-//         endDate: data.endDate?.toDate(),
-//         createdAt: data.createdAt?.toDate(),
-//         updatedAt: data.updatedAt?.toDate(),
-//         tasks: data.tasks || [],
-//         blockers: data.blockers || [],
-//         nextWeekObjectives: data.nextWeekObjectives || []
-//       }
-//     }) as Report[]
-    
-//     return reports.sort((a, b) => b.weekNumber - a.weekNumber)
-//   }
+// export async function getAllReports(): Promise<Report[]> {
+//   console.log('[Report Service] Fetching all reports')
+  
+//   const q = query(
+//     collection(db, 'reports'),
+//     where('userId', '==', auth.currentUser?.uid)
+//   )
+  
+//   const snapshot = await getDocs(q)
+//   const reports = snapshot.docs.map(doc => {
+//     const data = doc.data()
+//     return {
+//       id: doc.id,
+//       ...data,
+//       startDate: data.startDate?.toDate(),
+//       endDate: data.endDate?.toDate(),
+//       createdAt: data.createdAt?.toDate(),
+//       updatedAt: data.updatedAt?.toDate(),
+//       tasks: data.tasks || [],
+//       blockers: data.blockers || [],
+//       nextWeekObjectives: data.nextWeekObjectives || []
+//     }
+//   }) as Report[]
+  
+//   return reports.sort((a, b) => b.weekNumber - a.weekNumber)
+// }
+
+// export async function deleteReport(reportId: string) {
+//   console.log('[Report Service] Deleting report:', reportId)
+//   await deleteDoc(doc(db, 'reports', reportId))
+//   console.log('[Report Service] Report deleted')
+// }
+
 
 
 
@@ -218,6 +253,7 @@ export interface Blocker {
 export interface Report {
   id: string
   projectId: string
+  companyId: string  // ✅ AJOUTÉ
   userId: string
   weekNumber: number
   startDate: Date
@@ -232,56 +268,9 @@ export interface Report {
   updatedAt: Date
 }
 
-// export async function createReport(data: {
-//   projectId: string
-//   weekNumber: number
-//   startDate: string
-//   endDate: string
-//   currentStep?: number
-//   summary?: string
-//   tasks?: Task[]
-//   blockers?: Blocker[]
-//   nextWeekObjectives?: string[]
-// }) {
-//   console.log('[Report Service] Creating report:', data)
-  
-//   const existingQuery = query(
-//     collection(db, 'reports'),
-//     where('projectId', '==', data.projectId),
-//     where('userId', '==', auth.currentUser?.uid),
-//     where('weekNumber', '==', data.weekNumber)
-//   )
-  
-//   const existingSnapshot = await getDocs(existingQuery)
-  
-//   if (!existingSnapshot.empty) {
-//     throw new Error(`Un rapport existe déjà pour la semaine ${data.weekNumber} de ce projet`)
-//   }
-  
-//   const docRef = await addDoc(collection(db, 'reports'), {
-//     projectId: data.projectId,
-//     userId: auth.currentUser?.uid,
-//     weekNumber: data.weekNumber,
-//     startDate: Timestamp.fromDate(new Date(data.startDate)),
-//     endDate: Timestamp.fromDate(new Date(data.endDate)),
-//     status: 'Draft',
-//     currentStep: data.currentStep || 0,
-//     summary: data.summary || '',
-//     tasks: data.tasks || [],
-//     blockers: data.blockers || [],
-//     nextWeekObjectives: data.nextWeekObjectives || [],
-//     createdAt: Timestamp.now(),
-//     updatedAt: Timestamp.now()
-//   })
-  
-//   console.log('[Report Service] Report created with ID:', docRef.id)
-//   return docRef.id
-// }
-
-
-// lib/services/report-service.ts
 export async function createReport(data: {
   projectId: string
+  companyId: string  // ✅ AJOUTÉ
   weekNumber: number
   startDate: string
   endDate: string
@@ -294,10 +283,11 @@ export async function createReport(data: {
   console.log('[Report Service] Creating report:', data)
   console.log('[Report Service] Current user:', auth.currentUser?.uid)
   
-  // Vérification doublon par weekNumber
+  // ✅ Vérification doublon par weekNumber + companyId
   const existingWeekQuery = query(
     collection(db, 'reports'),
     where('projectId', '==', data.projectId),
+    where('companyId', '==', data.companyId),
     where('userId', '==', auth.currentUser?.uid),
     where('weekNumber', '==', data.weekNumber)
   )
@@ -311,13 +301,14 @@ export async function createReport(data: {
     throw new Error(`Un rapport existe déjà pour la semaine ${data.weekNumber} de ce projet (ID: ${existingId})`)
   }
   
-  // Vérification doublon par dates
+  // ✅ Vérification doublon par dates + companyId
   const startTimestamp = Timestamp.fromDate(new Date(data.startDate))
   const endTimestamp = Timestamp.fromDate(new Date(data.endDate))
   
   const existingDatesQuery = query(
     collection(db, 'reports'),
     where('projectId', '==', data.projectId),
+    where('companyId', '==', data.companyId),
     where('userId', '==', auth.currentUser?.uid),
     where('startDate', '==', startTimestamp),
     where('endDate', '==', endTimestamp)
@@ -337,6 +328,7 @@ export async function createReport(data: {
   // Créer le rapport
   const docRef = await addDoc(collection(db, 'reports'), {
     projectId: data.projectId,
+    companyId: data.companyId,  // ✅ AJOUTÉ
     userId: auth.currentUser?.uid,
     weekNumber: data.weekNumber,
     startDate: startTimestamp,
@@ -361,7 +353,7 @@ export async function updateReport(
     currentStep?: number
     summary?: string
     tasks?: Task[]
-    blockers?: Blocker[]  // ✅ CHANGÉ DE string[] À Blocker[]
+    blockers?: Blocker[]
     nextWeekObjectives?: string[]
     status?: 'Draft' | 'Published'
   }
@@ -377,12 +369,14 @@ export async function updateReport(
   console.log('[Report Service] Report updated')
 }
 
-export async function getReportsByProject(projectId: string): Promise<Report[]> {
-  console.log('[Report Service] Fetching reports for project:', projectId)
+// ✅ Filtrer par companyId
+export async function getReportsByProject(projectId: string, companyId: string): Promise<Report[]> {
+  console.log('[Report Service] Fetching reports for project:', projectId, 'company:', companyId)
   
   const q = query(
     collection(db, 'reports'),
     where('projectId', '==', projectId),
+    where('companyId', '==', companyId),  // ✅ AJOUTÉ
     where('userId', '==', auth.currentUser?.uid)
   )
   
@@ -441,11 +435,13 @@ export async function getReportById(reportId: string): Promise<Report | null> {
   }
 }
 
-export async function getAllReports(): Promise<Report[]> {
-  console.log('[Report Service] Fetching all reports')
+// ✅ Filtrer par companyId
+export async function getAllReports(companyId: string): Promise<Report[]> {
+  console.log('[Report Service] Fetching all reports for company:', companyId)
   
   const q = query(
     collection(db, 'reports'),
+    where('companyId', '==', companyId),  // ✅ AJOUTÉ
     where('userId', '==', auth.currentUser?.uid)
   )
   

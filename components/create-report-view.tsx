@@ -43,6 +43,7 @@
   
 //   const [currentStep, setCurrentStep] = React.useState(0)
 //   const [isValidatingDuplicate, setIsValidatingDuplicate] = React.useState(false)
+//   const [createdReportId, setCreatedReportId] = React.useState<string | null>(null)
   
 //   const [formData, setFormData] = React.useState<FormData>({
 //     weekNumber: 0,
@@ -139,7 +140,6 @@
 //     }))
 //   }
 
-//   // ✅ Vérification doublons AVANT de passer à l'étape suivante
 //   const handleNext = async () => {
 //     if (currentStep === 0) {
 //       if (!formData.weekNumber || !formData.startDate || !formData.endDate) {
@@ -151,10 +151,9 @@
 //         return
 //       }
 
-//       // ✅ Vérifier les doublons
 //       setIsValidatingDuplicate(true)
 //       try {
-//         await createReport.mutateAsync({
+//         const reportId = await createReport.mutateAsync({
 //           projectId,
 //           weekNumber: formData.weekNumber,
 //           startDate: formData.startDate,
@@ -166,7 +165,7 @@
 //           nextWeekObjectives: []
 //         })
         
-//         // Si succès, passer à l'étape suivante
+//         setCreatedReportId(reportId)
 //         setCurrentStep(1)
 //       } catch (error: any) {
 //         toast({
@@ -189,32 +188,26 @@
 //   }
 
 //   const handlePublish = async () => {
-//     try {
-//       // Récupérer l'ID du rapport créé à l'étape 0
-//       // On doit le stocker après création
+//     if (!createdReportId) {
 //       toast({
-//         title: "Publication en cours",
-//         description: "Veuillez patienter..."
+//         title: "Erreur",
+//         description: "Une erreur s'est produite. Veuillez réessayer.",
+//         variant: "destructive"
 //       })
+//       return
+//     }
 
-//       // On va recréer avec status Published directement
-//       const reportId = await createReport.mutateAsync({
-//         projectId,
-//         weekNumber: formData.weekNumber,
-//         startDate: formData.startDate,
-//         endDate: formData.endDate,
-//         currentStep: TOTAL_STEPS - 1,
-//         summary: formData.summary,
-//         tasks: formData.tasks.filter(t => t.description.trim()),
-//         blockers: formData.blockers.filter(b => b.description.trim()),
-//         nextWeekObjectives: formData.nextWeekObjectives.filter(o => o.trim())
-//       })
-
+//     try {
 //       await updateReport.mutateAsync({
-//         reportId,
+//         reportId: createdReportId,
 //         projectId,
 //         data: {
-//           status: 'Published'
+//           status: 'Published',
+//           currentStep: TOTAL_STEPS - 1,
+//           summary: formData.summary,
+//           tasks: formData.tasks.filter(t => t.description.trim()),
+//           blockers: formData.blockers.filter(b => b.description.trim()),
+//           nextWeekObjectives: formData.nextWeekObjectives.filter(o => o.trim())
 //         }
 //       })
       
@@ -317,59 +310,66 @@
 //                 </Button>
 //               </div>
 //             </CardHeader>
-//             <CardContent className="space-y-4 max-h-[500px] overflow-y-auto">
-//               {formData.tasks.length === 0 ? (
-//                 <div className="text-center py-8 text-muted-foreground">
-//                   Aucune tâche ajoutée. Cliquez sur "Ajouter Tâche" pour commencer.
-//                 </div>
-//               ) : (
-//                 formData.tasks.map((task, index) => (
-//                   <Card key={task.id} className="bg-muted/30">
-//                     <CardContent className="pt-6 space-y-3">
-//                       <div className="flex items-start gap-2">
-//                         <Checkbox
-//                           checked={task.completed}
-//                           onCheckedChange={(checked) => 
-//                             updateTask(index, 'completed', checked === true)
-//                           }
-//                         />
-//                         <div className="flex-1 space-y-3">
-//                           <Textarea
-//                             value={task.description}
-//                             onChange={(e) => updateTask(index, 'description', e.target.value)}
-//                             placeholder="Description de la tâche..."
-//                             rows={2}
-//                           />
-//                           <Select
-//                             value={task.assignedTo || 'unassigned'}
-//                             onValueChange={(value) => 
-//                               updateTask(index, 'assignedTo', value === 'unassigned' ? undefined : value)
+//             <CardContent className="space-y-4">
+//               <div className={`space-y-3 ${formData.tasks.length > 5 ? 'max-h-[400px] overflow-y-auto pr-2' : ''}`}>
+//                 {formData.tasks.length === 0 ? (
+//                   <div className="text-center py-8 text-muted-foreground">
+//                     Aucune tâche ajoutée. Cliquez sur "Ajouter Tâche" pour commencer.
+//                   </div>
+//                 ) : (
+//                   formData.tasks.map((task, index) => (
+//                     <Card key={task.id} className="bg-muted/30">
+//                       <CardContent className="pt-6 space-y-3">
+//                         <div className="flex items-start gap-2">
+//                           <Checkbox
+//                             checked={task.completed}
+//                             onCheckedChange={(checked) => 
+//                               updateTask(index, 'completed', checked === true)
 //                             }
+//                           />
+//                           <div className="flex-1 space-y-3">
+//                             <Textarea
+//                               value={task.description}
+//                               onChange={(e) => updateTask(index, 'description', e.target.value)}
+//                               placeholder="Description de la tâche..."
+//                               rows={2}
+//                             />
+//                             <Select
+//                               value={task.assignedTo || 'unassigned'}
+//                               onValueChange={(value) => 
+//                                 updateTask(index, 'assignedTo', value === 'unassigned' ? undefined : value)
+//                               }
+//                             >
+//                               <SelectTrigger className="w-full">
+//                                 <SelectValue placeholder="Assigner à..." />
+//                               </SelectTrigger>
+//                               <SelectContent>
+//                                 <SelectItem value="unassigned">Non assignée</SelectItem>
+//                                 {projectMembersData.map(pm => (
+//                                   <SelectItem key={pm.memberId} value={pm.memberId}>
+//                                     {pm.memberName}
+//                                   </SelectItem>
+//                                 ))}
+//                               </SelectContent>
+//                             </Select>
+//                           </div>
+//                           <Button
+//                             variant="ghost"
+//                             size="icon"
+//                             onClick={() => removeTask(index)}
 //                           >
-//                             <SelectTrigger className="w-full">
-//                               <SelectValue placeholder="Assigner à..." />
-//                             </SelectTrigger>
-//                             <SelectContent>
-//                               <SelectItem value="unassigned">Non assignée</SelectItem>
-//                               {projectMembersData.map(pm => (
-//                                 <SelectItem key={pm.memberId} value={pm.memberId}>
-//                                   {pm.memberName}
-//                                 </SelectItem>
-//                               ))}
-//                             </SelectContent>
-//                           </Select>
+//                             <Trash2 className="h-4 w-4" />
+//                           </Button>
 //                         </div>
-//                         <Button
-//                           variant="ghost"
-//                           size="icon"
-//                           onClick={() => removeTask(index)}
-//                         >
-//                           <Trash2 className="h-4 w-4" />
-//                         </Button>
-//                       </div>
-//                     </CardContent>
-//                   </Card>
-//                 ))
+//                       </CardContent>
+//                     </Card>
+//                   ))
+//                 )}
+//               </div>
+//               {formData.tasks.length > 10 && (
+//                 <p className="text-xs text-muted-foreground text-center pt-2">
+//                   {formData.tasks.length} tâches • Faites défiler pour voir toutes
+//                 </p>
 //               )}
 //             </CardContent>
 //           </Card>
@@ -387,56 +387,63 @@
 //                 </Button>
 //               </div>
 //             </CardHeader>
-//             <CardContent className="space-y-4 max-h-[500px] overflow-y-auto">
-//               {formData.blockers.length === 0 ? (
-//                 <div className="text-center py-8 text-muted-foreground">
-//                   Aucun blocage signalé. Cliquez sur "Ajouter Blocage" si nécessaire.
-//                 </div>
-//               ) : (
-//                 formData.blockers.map((blocker, index) => (
-//                   <Card key={blocker.id} className="bg-muted/30">
-//                     <CardContent className="pt-6 space-y-3">
-//                       <div className="flex items-start gap-2">
-//                         <div className="flex-1 space-y-3">
-//                           <Textarea
-//                             value={blocker.description}
-//                             onChange={(e) => updateBlocker(index, 'description', e.target.value)}
-//                             placeholder="Description du blocage..."
-//                             rows={2}
-//                           />
-//                           <Select
-//                             value={blocker.level}
-//                             onValueChange={(value: 'high' | 'medium' | 'low') => 
-//                               updateBlocker(index, 'level', value)
-//                             }
+//             <CardContent className="space-y-4">
+//               <div className={`space-y-3 ${formData.blockers.length > 5 ? 'max-h-[400px] overflow-y-auto pr-2' : ''}`}>
+//                 {formData.blockers.length === 0 ? (
+//                   <div className="text-center py-8 text-muted-foreground">
+//                     Aucun blocage signalé. Cliquez sur "Ajouter Blocage" si nécessaire.
+//                   </div>
+//                 ) : (
+//                   formData.blockers.map((blocker, index) => (
+//                     <Card key={blocker.id} className="bg-muted/30">
+//                       <CardContent className="pt-6 space-y-3">
+//                         <div className="flex items-start gap-2">
+//                           <div className="flex-1 space-y-3">
+//                             <Textarea
+//                               value={blocker.description}
+//                               onChange={(e) => updateBlocker(index, 'description', e.target.value)}
+//                               placeholder="Description du blocage..."
+//                               rows={2}
+//                             />
+//                             <Select
+//                               value={blocker.level}
+//                               onValueChange={(value: 'high' | 'medium' | 'low') => 
+//                                 updateBlocker(index, 'level', value)
+//                               }
+//                             >
+//                               <SelectTrigger className="w-[200px]">
+//                                 <SelectValue placeholder="Niveau d'impact" />
+//                               </SelectTrigger>
+//                               <SelectContent>
+//                                 <SelectItem value="high">Élevé</SelectItem>
+//                                 <SelectItem value="medium">Moyen</SelectItem>
+//                                 <SelectItem value="low">Bas</SelectItem>
+//                               </SelectContent>
+//                             </Select>
+//                             <Textarea
+//                               value={blocker.mitigation || ''}
+//                               onChange={(e) => updateBlocker(index, 'mitigation', e.target.value)}
+//                               placeholder="Action de mitigation (optionnel)..."
+//                               rows={2}
+//                             />
+//                           </div>
+//                           <Button
+//                             variant="ghost"
+//                             size="icon"
+//                             onClick={() => removeBlocker(index)}
 //                           >
-//                             <SelectTrigger className="w-[200px]">
-//                               <SelectValue placeholder="Niveau d'impact" />
-//                             </SelectTrigger>
-//                             <SelectContent>
-//                               <SelectItem value="high">Élevé</SelectItem>
-//                               <SelectItem value="medium">Moyen</SelectItem>
-//                               <SelectItem value="low">Bas</SelectItem>
-//                             </SelectContent>
-//                           </Select>
-//                           <Textarea
-//                             value={blocker.mitigation || ''}
-//                             onChange={(e) => updateBlocker(index, 'mitigation', e.target.value)}
-//                             placeholder="Action de mitigation (optionnel)..."
-//                             rows={2}
-//                           />
+//                             <Trash2 className="h-4 w-4" />
+//                           </Button>
 //                         </div>
-//                         <Button
-//                           variant="ghost"
-//                           size="icon"
-//                           onClick={() => removeBlocker(index)}
-//                         >
-//                           <Trash2 className="h-4 w-4" />
-//                         </Button>
-//                       </div>
-//                     </CardContent>
-//                   </Card>
-//                 ))
+//                       </CardContent>
+//                     </Card>
+//                   ))
+//                 )}
+//               </div>
+//               {formData.blockers.length > 10 && (
+//                 <p className="text-xs text-muted-foreground text-center pt-2">
+//                   {formData.blockers.length} blocages
+//                 </p>
 //               )}
 //             </CardContent>
 //           </Card>
@@ -454,28 +461,35 @@
 //                 </Button>
 //               </div>
 //             </CardHeader>
-//             <CardContent className="space-y-4 max-h-[500px] overflow-y-auto">
-//               {formData.nextWeekObjectives.length === 0 ? (
-//                 <div className="text-center py-8 text-muted-foreground">
-//                   Aucun objectif défini. Cliquez sur "Ajouter Objectif" pour commencer.
-//                 </div>
-//               ) : (
-//                 formData.nextWeekObjectives.map((objective, index) => (
-//                   <div key={index} className="flex items-center gap-2">
-//                     <Input
-//                       value={objective}
-//                       onChange={(e) => updateObjective(index, e.target.value)}
-//                       placeholder="Objectif..."
-//                     />
-//                     <Button
-//                       variant="ghost"
-//                       size="icon"
-//                       onClick={() => removeObjective(index)}
-//                     >
-//                       <Trash2 className="h-4 w-4" />
-//                     </Button>
+//             <CardContent className="space-y-4">
+//               <div className={`space-y-3 ${formData.nextWeekObjectives.length > 10 ? 'max-h-[400px] overflow-y-auto pr-2' : ''}`}>
+//                 {formData.nextWeekObjectives.length === 0 ? (
+//                   <div className="text-center py-8 text-muted-foreground">
+//                     Aucun objectif défini. Cliquez sur "Ajouter Objectif" pour commencer.
 //                   </div>
-//                 ))
+//                 ) : (
+//                   formData.nextWeekObjectives.map((objective, index) => (
+//                     <div key={index} className="flex items-center gap-2">
+//                       <Input
+//                         value={objective}
+//                         onChange={(e) => updateObjective(index, e.target.value)}
+//                         placeholder="Objectif..."
+//                       />
+//                       <Button
+//                         variant="ghost"
+//                         size="icon"
+//                         onClick={() => removeObjective(index)}
+//                       >
+//                         <Trash2 className="h-4 w-4" />
+//                       </Button>
+//                     </div>
+//                   ))
+//                 )}
+//               </div>
+//               {formData.nextWeekObjectives.length > 15 && (
+//                 <p className="text-xs text-muted-foreground text-center pt-2">
+//                   {formData.nextWeekObjectives.length} objectifs
+//                 </p>
 //               )}
 //             </CardContent>
 //           </Card>
@@ -508,7 +522,6 @@
 
 //       <StepIndicator currentStep={currentStep} totalSteps={TOTAL_STEPS} />
 
-//       {/* ✅ Hauteur fixe pour éviter les sauts */}
 //       <div className="min-h-[600px]">
 //         {renderStep()}
 //       </div>
@@ -547,6 +560,8 @@
 
 
 
+
+
 // components/create-report-view.tsx
 "use client"
 
@@ -561,6 +576,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { useRouter } from "next/navigation"
 import { useCreateReport, useUpdateReport } from "@/hooks/use-reports"
+import { useProject } from "@/hooks/use-projects"
 import { useProjectMembers } from "@/hooks/use-project-members"
 import { useToast } from "@/hooks/use-toast"
 import { StepIndicator } from "@/components/step-indicator"
@@ -586,6 +602,8 @@ export function CreateReportView({ projectId }: CreateReportViewProps) {
   const router = useRouter()
   const { toast } = useToast()
   
+  // ✅ CORRECTION - Récupérer project pour avoir companyId
+  const { data: project } = useProject(projectId)
   const { data: projectMembersData = [] } = useProjectMembers(projectId)
   const createReport = useCreateReport()
   const updateReport = useUpdateReport()
@@ -700,10 +718,21 @@ export function CreateReportView({ projectId }: CreateReportViewProps) {
         return
       }
 
+      // ✅ CORRECTION - Vérifier project et companyId
+      if (!project || !project.companyId) {
+        toast({
+          title: "Erreur",
+          description: "Impossible de récupérer les informations du projet",
+          variant: "destructive"
+        })
+        return
+      }
+
       setIsValidatingDuplicate(true)
       try {
         const reportId = await createReport.mutateAsync({
           projectId,
+          companyId: project.companyId,  // ✅ AJOUTÉ
           weekNumber: formData.weekNumber,
           startDate: formData.startDate,
           endDate: formData.endDate,
@@ -892,7 +921,7 @@ export function CreateReportView({ projectId }: CreateReportViewProps) {
                               <SelectTrigger className="w-full">
                                 <SelectValue placeholder="Assigner à..." />
                               </SelectTrigger>
-                              <SelectContent>
+                              <SelectContent className={projectMembersData.length > 10 ? "max-h-[300px] overflow-y-auto" : ""}>
                                 <SelectItem value="unassigned">Non assignée</SelectItem>
                                 {projectMembersData.map(pm => (
                                   <SelectItem key={pm.memberId} value={pm.memberId}>

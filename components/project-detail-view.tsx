@@ -2,7 +2,7 @@
 // "use client"
 
 // import * as React from "react"
-// import { ArrowLeft, FileText, Calendar, Building, Monitor, Smartphone, Globe, Megaphone, CheckCircle2, AlertCircle, Target } from "lucide-react"
+// import { ArrowLeft, FileText, Calendar, Building, Monitor, Smartphone, Globe, Megaphone, CheckCircle2, AlertCircle, Target, Users } from "lucide-react"
 // import { Button } from "@/components/ui/button"
 // import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 // import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -12,11 +12,10 @@
 // import Link from "next/link"
 // import { useProject, useCompleteAnalysisPhase } from "@/hooks/use-projects"
 // import { useAnalyses } from "@/hooks/use-analyses"
+// import { useProjectMembers } from "@/hooks/use-project-members"
 // import { Skeleton } from "@/components/ui/skeleton"
 // import { useToast } from "@/hooks/use-toast"
-// import { ProjectTeamView } from "@/components/project-team-view"
-
-
+// import { AssignMembersDialog } from "@/components/assign-members-dialog"
 
 // type ProjectDetailViewProps = {
 //   projectId: string
@@ -62,7 +61,10 @@
 //   const { toast } = useToast()
 //   const { data: project, isLoading, error } = useProject(projectId)
 //   const { data: analyses = [] } = useAnalyses(projectId)
+//   const { data: projectMembers = [] } = useProjectMembers(projectId)
 //   const completeAnalysisPhase = useCompleteAnalysisPhase()
+  
+//   const [assignMembersDialogOpen, setAssignMembersDialogOpen] = React.useState(false)
 
 //   console.log('[ProjectDetailView] Query state:', { 
 //     isLoading, 
@@ -71,7 +73,7 @@
 //     project 
 //   })
 
-//   // ✅ Fonction de bouclage
+//   // Fonction de bouclage
 //   const handleCompleteAnalysis = async () => {
 //     if (!project) return
 
@@ -264,78 +266,132 @@
 //         </Card>
 //       </div>
 
-//       {/* ✅ NOUVELLE CARD - Progression des Analyses */}
-//       <Card>
-//         <CardHeader>
-//           <div className="flex items-center justify-between">
-//             <div>
-//               <CardTitle>Progression des Analyses</CardTitle>
-//               <p className="text-sm text-muted-foreground mt-1">
-//                 Complétez vos analyses pour boucler cette phase
-//               </p>
+//       {/* Grid 2 colonnes : Progression des Analyses | Gestion d'Équipe */}
+//       <div className="grid gap-6 md:grid-cols-2">
+//         {/* Card Progression des Analyses */}
+//         <Card>
+//           <CardHeader>
+//             <div className="flex items-center justify-between">
+//               <div>
+//                 <CardTitle>Progression des Analyses</CardTitle>
+//                 <p className="text-sm text-muted-foreground mt-1">
+//                   Complétez vos analyses pour boucler cette phase
+//                 </p>
+//               </div>
+//               {project.analysisProgress === 100 && 
+//                completedAnalyses > 0 && 
+//                completedAnalyses < 4 && 
+//                !project.analysisComplete && (
+//                 <Button 
+//                   onClick={handleCompleteAnalysis}
+//                   disabled={completeAnalysisPhase.isPending}
+//                   size="sm"
+//                 >
+//                   <CheckCircle2 className="mr-2 h-4 w-4" />
+//                   {completeAnalysisPhase.isPending ? "Bouclage..." : "Boucler"}
+//                 </Button>
+//               )}
 //             </div>
-//            {/* ✅ Bouton visible si 100% ET au moins 1 analyse terminée ET PAS déjà bouclé */}
-// {project.analysisProgress === 100 && 
-//  completedAnalyses > 0 && 
-//  completedAnalyses < 4 && 
-//  !project.analysisComplete && (
-//   <Button 
-//     onClick={handleCompleteAnalysis}
-//     disabled={completeAnalysisPhase.isPending}
-//   >
-//     <CheckCircle2 className="mr-2 h-4 w-4" />
-//     {completeAnalysisPhase.isPending ? "Bouclage..." : "Boucler les Analyses"}
-//   </Button>
-// )}
-//           </div>
-//         </CardHeader>
-//         <CardContent className="space-y-4">
-//           {/* ✅ Alerte si < 100% */}
-//           {project.analysisProgress < 100 && (
-//             <Alert>
-//               <Target className="h-4 w-4" />
-//               <AlertTitle>Analyses en cours</AlertTitle>
-//               <AlertDescription>
-//                 Marquez toutes vos analyses comme "Terminée" pour atteindre 100% et pouvoir boucler cette phase.
-//               </AlertDescription>
-//             </Alert>
-//           )}
+//           </CardHeader>
+//           <CardContent className="space-y-4">
+//             {project.analysisProgress < 100 && (
+//               <Alert>
+//                 <Target className="h-4 w-4" />
+//                 <AlertTitle>Analyses en cours</AlertTitle>
+//                 <AlertDescription>
+//                   Marquez toutes vos analyses comme "Terminée" pour atteindre 100%.
+//                 </AlertDescription>
+//               </Alert>
+//             )}
 
-//           {/* ✅ Alerte si 100% mais pas bouclé */}
-//           {project.analysisProgress === 100 && !project.analysisComplete && (
-//             <Alert className="border-green-500/50 bg-green-500/10">
-//               <CheckCircle2 className="h-4 w-4 text-green-500" />
-//               <AlertTitle className="text-green-500">Analyses complètes !</AlertTitle>
-//               <AlertDescription className="text-green-600">
-//                 Toutes vos analyses sont terminées. Cliquez sur "Boucler les Analyses" pour finaliser cette phase.
-//               </AlertDescription>
-//             </Alert>
-//           )}
+//             {project.analysisProgress === 100 && !project.analysisComplete && (
+//               <Alert className="border-green-500/50 bg-green-500/10">
+//                 <CheckCircle2 className="h-4 w-4 text-green-500" />
+//                 <AlertTitle className="text-green-500">Analyses complètes !</AlertTitle>
+//                 <AlertDescription className="text-green-600">
+//                   Cliquez sur "Boucler" pour finaliser cette phase.
+//                 </AlertDescription>
+//               </Alert>
+//             )}
 
-//           {/* ✅ Confirmation si bouclé */}
-//           {project.analysisComplete && (
-//             <Alert className="border-green-500/50 bg-green-500/10">
-//               <CheckCircle2 className="h-4 w-4 text-green-500" />
-//               <AlertTitle className="text-green-500">Phase d'analyse bouclée</AlertTitle>
-//               <AlertDescription className="text-green-600">
-//                 Vous pouvez maintenant créer des rapports hebdomadaires pour ce projet.
-//               </AlertDescription>
-//             </Alert>
-//           )}
+//             {project.analysisComplete && (
+//               <Alert className="border-green-500/50 bg-green-500/10">
+//                 <CheckCircle2 className="h-4 w-4 text-green-500" />
+//                 <AlertTitle className="text-green-500">Phase d'analyse bouclée</AlertTitle>
+//                 <AlertDescription className="text-green-600">
+//                   Vous pouvez créer des rapports hebdomadaires.
+//                 </AlertDescription>
+//               </Alert>
+//             )}
 
-//           {/* ✅ Statistiques */}
-//           <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-//             <div>
-//               <p className="text-sm text-muted-foreground">Analyses créées</p>
-//               <p className="text-2xl font-bold">{analyses.length}</p>
+//             <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+//               <div>
+//                 <p className="text-sm text-muted-foreground">Analyses créées</p>
+//                 <p className="text-2xl font-bold">{analyses.length}</p>
+//               </div>
+//               <div>
+//                 <p className="text-sm text-muted-foreground">Terminées</p>
+//                 <p className="text-2xl font-bold text-green-500">{completedAnalyses}</p>
+//               </div>
 //             </div>
-//             <div>
-//               <p className="text-sm text-muted-foreground">Analyses terminées</p>
-//               <p className="text-2xl font-bold text-green-500">{completedAnalyses}</p>
+//           </CardContent>
+//         </Card>
+
+//         {/* Card Gestion d'Équipe */}
+//         <Card>
+//           <CardHeader>
+//             <div className="flex items-center justify-between">
+//               <div>
+//                 <CardTitle>Gestion d'Équipe</CardTitle>
+//                 <p className="text-sm text-muted-foreground mt-1">
+//                   Associez des membres à ce projet
+//                 </p>
+//               </div>
+//               <Badge variant="secondary" className="text-lg px-3 py-1">
+//                 {projectMembers.length}
+//               </Badge>
 //             </div>
-//           </div>
-//         </CardContent>
-//       </Card>
+//           </CardHeader>
+//           <CardContent className="space-y-4">
+//             <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/30">
+//               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
+//                 <Users className="h-6 w-6" />
+//               </div>
+//               <div className="flex-1">
+//                 <p className="text-sm font-medium">
+//                   {projectMembers.length === 0
+//                     ? "Aucun membre assigné"
+//                     : `${projectMembers.length} membre(s) assigné(s)`
+//                   }
+//                 </p>
+//                 <p className="text-xs text-muted-foreground">
+//                   Ajoutez des membres pour collaborer sur ce projet
+//                 </p>
+//               </div>
+//             </div>
+
+//             <Button 
+//               onClick={() => setAssignMembersDialogOpen(true)}
+//               className="w-full"
+//             >
+//               <Users className="mr-2 h-4 w-4" />
+//               Associer des Membres
+//             </Button>
+
+//             {projectMembers.length > 0 && (
+//               <Button 
+//                 asChild
+//                 variant="outline"
+//                 className="w-full"
+//               >
+//                 {/* <Link href={`/project/${projectId}/team`}>
+//                   Voir l'Équipe Complète
+//                 </Link> */}
+//               </Button>
+//             )}
+//           </CardContent>
+//         </Card>
+//       </div>
 
 //       <Tabs defaultValue="analysis" className="w-full">
 //         <TabsList className="grid w-full grid-cols-3">
@@ -383,24 +439,35 @@
 //           </Card>
 //         </TabsContent>
 //         <TabsContent value="team" className="space-y-4 mt-6">
-//   <Card className="bg-card">
-//     <CardHeader>
-//       <CardTitle className="text-card-foreground">Membres de l'Équipe</CardTitle>
-//     </CardHeader>
-//     <CardContent>
-//       <p className="text-muted-foreground">
-//         Voir tous les membres assignés à ce projet.
-//       </p>
-//       <Button className="mt-4" asChild>
-//         <Link href={`/project/${projectId}/team`}>Voir Équipe</Link>
-//       </Button>
-//     </CardContent>
-//   </Card>
-// </TabsContent>
+//           <Card className="bg-card">
+//             <CardHeader>
+//               <CardTitle className="text-card-foreground">Membres de l'Équipe</CardTitle>
+//             </CardHeader>
+//             <CardContent>
+//               <p className="text-muted-foreground">Voir tous les membres assignés à ce projet.</p>
+//               <Button className="mt-4" asChild>
+//                 <Link href={`/project/${projectId}/team`}>Voir Équipe</Link>
+//               </Button>
+//             </CardContent>
+//           </Card>
+//         </TabsContent>
 //       </Tabs>
+
+//       {/* Dialog d'association de membres */}
+//       {project.companyId && (
+//         <AssignMembersDialog
+//           open={assignMembersDialogOpen}
+//           onOpenChange={setAssignMembersDialogOpen}
+//           projectId={projectId}
+//           companyId={project.companyId}
+//         />
+//       )}
 //     </div>
 //   )
 // }
+
+
+
 
 
 
@@ -467,7 +534,9 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
   
   const { toast } = useToast()
   const { data: project, isLoading, error } = useProject(projectId)
-  const { data: analyses = [] } = useAnalyses(projectId)
+  
+  // ✅ CORRECTION - Ajouter companyId pour analyses
+  const { data: analyses = [] } = useAnalyses(projectId, project?.companyId || null)
   const { data: projectMembers = [] } = useProjectMembers(projectId)
   const completeAnalysisPhase = useCompleteAnalysisPhase()
   

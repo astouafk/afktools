@@ -2,15 +2,32 @@
 // "use client"
 
 // import * as React from "react"
-// import { ArrowLeft, Plus, FileText, Clock, CheckCircle2, Calendar } from "lucide-react"
+// import { ArrowLeft, Plus, FileText, Clock, CheckCircle2, Calendar, MoreVertical, Trash2 } from "lucide-react"
 // import { Button } from "@/components/ui/button"
 // import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 // import { Badge } from "@/components/ui/badge"
+// import {
+//   DropdownMenu,
+//   DropdownMenuContent,
+//   DropdownMenuItem,
+//   DropdownMenuTrigger,
+// } from "@/components/ui/dropdown-menu"
+// import {
+//   AlertDialog,
+//   AlertDialogAction,
+//   AlertDialogCancel,
+//   AlertDialogContent,
+//   AlertDialogDescription,
+//   AlertDialogFooter,
+//   AlertDialogHeader,
+//   AlertDialogTitle,
+// } from "@/components/ui/alert-dialog"
 // import Link from "next/link"
 // import { useProject } from "@/hooks/use-projects"
-// import { useReports } from "@/hooks/use-reports"
+// import { useReports, useDeleteReport } from "@/hooks/use-reports"
 // import { Skeleton } from "@/components/ui/skeleton"
 // import { useRouter } from "next/navigation"
+// import { useToast } from "@/hooks/use-toast"
 
 // type ReportsViewProps = {
 //   projectId: string
@@ -20,9 +37,14 @@
 
 // export function ReportsView({ projectId }: ReportsViewProps) {
 //   const router = useRouter()
+//   const { toast } = useToast()
 //   const { data: project, isLoading: projectLoading } = useProject(projectId)
 //   const { data: reports = [], isLoading: reportsLoading } = useReports(projectId)
+//   const deleteReport = useDeleteReport()
+  
 //   const [currentPage, setCurrentPage] = React.useState(1)
+//   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
+//   const [reportToDelete, setReportToDelete] = React.useState<string | null>(null)
 
 //   const isLoading = projectLoading || reportsLoading
 
@@ -30,6 +52,26 @@
 //   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
 //   const endIndex = startIndex + ITEMS_PER_PAGE
 //   const paginatedReports = reports.slice(startIndex, endIndex)
+
+//   const handleDelete = async () => {
+//     if (!reportToDelete) return
+    
+//     try {
+//       await deleteReport.mutateAsync(reportToDelete)
+//       toast({
+//         title: "Rapport supprimé",
+//         description: "Le rapport a été supprimé avec succès."
+//       })
+//       setDeleteDialogOpen(false)
+//       setReportToDelete(null)
+//     } catch (error: any) {
+//       toast({
+//         title: "Erreur",
+//         description: error.message,
+//         variant: "destructive"
+//       })
+//     }
+//   }
 
 //   if (isLoading) {
 //     return (
@@ -183,16 +225,38 @@
 //                     </div>
 //                   </div>
 
-//                   <Button 
-//                     asChild 
-//                     className="w-full"
-//                     variant="outline"
-//                   >
-//                     <Link href={`/project/${projectId}/reports/${report.id}`}>
-//                       <FileText className="mr-2 h-4 w-4" />
-//                       {report.status === "Draft" ? "Continuer" : "Voir Détails"}
-//                     </Link>
-//                   </Button>
+//                   <div className="flex items-center gap-2">
+//                     <Button 
+//                       asChild 
+//                       className="flex-1"
+//                       variant="outline"
+//                     >
+//                       <Link href={`/project/${projectId}/reports/${report.id}`}>
+//                         <FileText className="mr-2 h-4 w-4" />
+//                         {report.status === "Draft" ? "Continuer" : "Voir Détails"}
+//                       </Link>
+//                     </Button>
+                    
+//                     <DropdownMenu>
+//                       <DropdownMenuTrigger asChild>
+//                         <Button variant="ghost" size="icon">
+//                           <MoreVertical className="h-4 w-4" />
+//                         </Button>
+//                       </DropdownMenuTrigger>
+//                       <DropdownMenuContent align="end">
+//                         <DropdownMenuItem
+//                           className="text-destructive"
+//                           onClick={() => {
+//                             setReportToDelete(report.id)
+//                             setDeleteDialogOpen(true)
+//                           }}
+//                         >
+//                           <Trash2 className="mr-2 h-4 w-4" />
+//                           Supprimer
+//                         </DropdownMenuItem>
+//                       </DropdownMenuContent>
+//                     </DropdownMenu>
+//                   </div>
 //                 </CardContent>
 //               </Card>
 //             ))}
@@ -233,9 +297,32 @@
 //           )}
 //         </>
 //       )}
+
+//       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+//         <AlertDialogContent>
+//           <AlertDialogHeader>
+//             <AlertDialogTitle>Supprimer ce rapport ?</AlertDialogTitle>
+//             <AlertDialogDescription>
+//               Cette action est irréversible. Le rapport sera définitivement supprimé.
+//             </AlertDialogDescription>
+//           </AlertDialogHeader>
+//           <AlertDialogFooter>
+//             <AlertDialogCancel>Annuler</AlertDialogCancel>
+//             <AlertDialogAction
+//               onClick={handleDelete}
+//               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+//             >
+//               Supprimer
+//             </AlertDialogAction>
+//           </AlertDialogFooter>
+//         </AlertDialogContent>
+//       </AlertDialog>
 //     </div>
 //   )
 // }
+
+
+
 
 
 
@@ -281,7 +368,9 @@ export function ReportsView({ projectId }: ReportsViewProps) {
   const router = useRouter()
   const { toast } = useToast()
   const { data: project, isLoading: projectLoading } = useProject(projectId)
-  const { data: reports = [], isLoading: reportsLoading } = useReports(projectId)
+  
+  // ✅ CORRECTION - Ajouter companyId
+  const { data: reports = [], isLoading: reportsLoading } = useReports(projectId, project?.companyId || null)
   const deleteReport = useDeleteReport()
   
   const [currentPage, setCurrentPage] = React.useState(1)

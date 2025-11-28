@@ -1,182 +1,394 @@
-// //components/team-view.tsx
+// // components/team-view.tsx
 // "use client"
 
 // import * as React from "react"
-// import { Plus, MoreVertical, Edit, Trash2, Mail, User } from "lucide-react"
+// import { Plus, Users, Mail, Briefcase, MoreVertical, Trash2, Edit, Search } from "lucide-react"
 // import { Button } from "@/components/ui/button"
-// import { Card, CardContent } from "@/components/ui/card"
-// import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-// import { Input } from "@/components/ui/input"
+// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 // import { Badge } from "@/components/ui/badge"
-// import { Alert, AlertDescription } from "@/components/ui/alert"
-// import { AlertCircle } from "lucide-react"
-// import { AddTeamMemberDialog } from "@/components/add-team-member-dialog"
-// import { EditTeamMemberDialog } from "@/components/edit-team-member-dialog"
+// import { Input } from "@/components/ui/input"
+// import {
+//   DropdownMenu,
+//   DropdownMenuContent,
+//   DropdownMenuItem,
+//   DropdownMenuTrigger,
+// } from "@/components/ui/dropdown-menu"
+// import {
+//   AlertDialog,
+//   AlertDialogAction,
+//   AlertDialogCancel,
+//   AlertDialogContent,
+//   AlertDialogDescription,
+//   AlertDialogFooter,
+//   AlertDialogHeader,
+//   AlertDialogTitle,
+// } from "@/components/ui/alert-dialog"
+// import { useMembers, useDeleteMember } from "@/hooks/use-members"
+// import { Skeleton } from "@/components/ui/skeleton"
+// import { useToast } from "@/hooks/use-toast"
+// import { CreateMemberDialog } from "@/components/create-member-dialog"
+// import { EditMemberDialog } from "@/components/edit-member-dialog"
+// import type { Member } from "@/lib/services/member-service"
 
-// type TeamMember = {
-//   id: number
-//   name: string
-//   role: string
-//   email?: string
-//   activeTasks: number
-// }
-
-// const mockTeamMembers: TeamMember[] = [
-//   {
-//     id: 1,
-//     name: "Sarah Johnson",
-//     role: "Lead Designer",
-//     email: "sarah.johnson@company.com",
-//     activeTasks: 5,
-//   },
-//   {
-//     id: 2,
-//     name: "Mike Chen",
-//     role: "Backend Developer",
-//     email: "mike.chen@company.com",
-//     activeTasks: 8,
-//   },
-//   {
-//     id: 3,
-//     name: "Alex Smith",
-//     role: "Frontend Developer",
-//     email: "alex.smith@company.com",
-//     activeTasks: 3,
-//   },
-//   {
-//     id: 4,
-//     name: "Jessica Lee",
-//     role: "Project Manager",
-//     email: "jessica.lee@company.com",
-//     activeTasks: 12,
-//   },
-//   {
-//     id: 5,
-//     name: "David Brown",
-//     role: "QA Engineer",
-//     activeTasks: 0,
-//   },
-// ]
+// const ITEMS_PER_PAGE = 9
 
 // export function TeamView() {
-//   const [members, setMembers] = React.useState<TeamMember[]>(mockTeamMembers)
+//   const { toast } = useToast()
+  
+//   // Récupérer companyId depuis localStorage
+//   const selectedCompanyId = typeof window !== 'undefined' ? localStorage.getItem('selectedCompanyId') : null
+  
+//   const { data: members = [], isLoading } = useMembers(selectedCompanyId)
+//   const deleteMember = useDeleteMember()
+  
 //   const [searchQuery, setSearchQuery] = React.useState("")
-//   const [addDialogOpen, setAddDialogOpen] = React.useState(false)
-//   const [editMember, setEditMember] = React.useState<TeamMember | null>(null)
-//   const [deleteAttempt, setDeleteAttempt] = React.useState<TeamMember | null>(null)
+//   const [currentPage, setCurrentPage] = React.useState(1)
+//   const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
+//   const [editDialogOpen, setEditDialogOpen] = React.useState(false)
+//   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
+//   const [memberToEdit, setMemberToEdit] = React.useState<Member | null>(null)
+//   const [memberToDelete, setMemberToDelete] = React.useState<string | null>(null)
 
-//   const filteredMembers = members.filter(
-//     (member) =>
+//   // Filtrage par recherche
+//   const filteredMembers = members.filter((member) => {
+//     const matchesSearch = 
 //       member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-//       member.role.toLowerCase().includes(searchQuery.toLowerCase()),
-//   )
+//       member.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+//       (member.role && member.role.toLowerCase().includes(searchQuery.toLowerCase()))
+//     return matchesSearch
+//   })
 
-//   const handleDelete = (member: TeamMember) => {
-//     if (member.activeTasks > 0) {
-//       setDeleteAttempt(member)
-//       setTimeout(() => setDeleteAttempt(null), 5000)
-//     } else {
-//       setMembers(members.filter((m) => m.id !== member.id))
+//   // Pagination
+//   const totalPages = Math.ceil(filteredMembers.length / ITEMS_PER_PAGE)
+//   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+//   const endIndex = startIndex + ITEMS_PER_PAGE
+//   const paginatedMembers = filteredMembers.slice(startIndex, endIndex)
+
+//   // Reset à la page 1 si la recherche change
+//   React.useEffect(() => {
+//     setCurrentPage(1)
+//   }, [searchQuery])
+
+//   // Fonction pour obtenir les initiales
+//   const getInitials = (name: string) => {
+//     const parts = name.trim().split(' ')
+//     if (parts.length >= 2) {
+//       return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
 //     }
+//     return name.substring(0, 2).toUpperCase()
+//   }
+
+//   // Fonction de suppression
+//   const handleDelete = async () => {
+//     if (!memberToDelete) return
+    
+//     try {
+//       await deleteMember.mutateAsync(memberToDelete)
+//       toast({
+//         title: "Membre supprimé",
+//         description: "Le membre a été supprimé avec succès."
+//       })
+//       setDeleteDialogOpen(false)
+//       setMemberToDelete(null)
+//     } catch (error: any) {
+//       toast({
+//         title: "Erreur",
+//         description: error.message,
+//         variant: "destructive"
+//       })
+//     }
+//   }
+
+//   if (isLoading) {
+//     return (
+//       <div className="space-y-6">
+//         <div className="flex items-center justify-between">
+//           <Skeleton className="h-10 w-64" />
+//           <Skeleton className="h-10 w-40" />
+//         </div>
+//         <Skeleton className="h-32" />
+//         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+//           {Array.from({ length: 9 }).map((_, i) => (
+//             <Skeleton key={i} className="h-48" />
+//           ))}
+//         </div>
+//       </div>
+//     )
+//   }
+
+//   if (!selectedCompanyId) {
+//     return (
+//       <div className="flex items-center justify-center min-h-[400px]">
+//         <div className="text-center space-y-4">
+//           <Users className="h-12 w-12 text-muted-foreground mx-auto" />
+//           <p className="text-muted-foreground">Veuillez sélectionner une entreprise</p>
+//         </div>
+//       </div>
+//     )
 //   }
 
 //   return (
 //     <div className="space-y-6">
+//       {/* Header */}
 //       <div className="flex items-center justify-between">
 //         <div>
-//           <h1 className="text-3xl font-semibold tracking-tight text-card-foreground">Team Members</h1>
-//           <p className="text-sm text-muted-foreground">Manage team members and their task assignments.</p>
+//           <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+//             Équipe
+//           </h1>
+//           <p className="text-sm text-muted-foreground mt-1">
+//             Gérez les membres de votre entreprise
+//           </p>
 //         </div>
-//         <Button onClick={() => setAddDialogOpen(true)}>
+//         <Button onClick={() => setCreateDialogOpen(true)}>
 //           <Plus className="mr-2 h-4 w-4" />
-//           Add Team Member
+//           Ajouter un Membre
 //         </Button>
 //       </div>
 
-//       <div className="flex items-center gap-4">
-//         <div className="flex-1">
+//       {/* Card Résumé */}
+//       <Card>
+//         <CardHeader>
+//           <CardTitle>Résumé</CardTitle>
+//         </CardHeader>
+//         <CardContent>
+//           <div className="grid gap-4 md:grid-cols-3">
+//             <div>
+//               <span className="text-sm text-muted-foreground">Total membres</span>
+//               <p className="text-2xl font-bold">{members.length}</p>
+//             </div>
+//             <div>
+//               <span className="text-sm text-muted-foreground">Avec rôle défini</span>
+//               <p className="text-2xl font-bold">
+//                 {members.filter(m => m.role).length}
+//               </p>
+//             </div>
+//             <div>
+//               <span className="text-sm text-muted-foreground">Sans rôle</span>
+//               <p className="text-2xl font-bold">
+//                 {members.filter(m => !m.role).length}
+//               </p>
+//             </div>
+//           </div>
+//         </CardContent>
+//       </Card>
+
+//       {/* Barre de recherche */}
+//       <div className="flex items-center gap-4 bg-muted/30 p-4 rounded-lg">
+//         <div className="relative flex-1">
+//           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 //           <Input
-//             placeholder="Search by name or role..."
+//             placeholder="Rechercher par nom, email ou rôle..."
 //             value={searchQuery}
 //             onChange={(e) => setSearchQuery(e.target.value)}
-//             className="max-w-md"
+//             className="pl-10 bg-background"
 //           />
 //         </div>
 //       </div>
 
-//       {deleteAttempt && (
-//         <Alert variant="destructive">
-//           <AlertCircle className="h-4 w-4" />
-//           <AlertDescription>
-//             Cannot delete {deleteAttempt.name} - they have {deleteAttempt.activeTasks} active task
-//             {deleteAttempt.activeTasks !== 1 ? "s" : ""}. Reassign their tasks before deleting.
-//           </AlertDescription>
-//         </Alert>
-//       )}
+//       {/* Liste des membres */}
+//       {filteredMembers.length === 0 ? (
+//         <div className="flex items-center justify-center min-h-[300px]">
+//           <div className="text-center">
+//             {members.length === 0 ? (
+//               <>
+//                 <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+//                 <p className="text-muted-foreground">Aucun membre dans votre équipe</p>
+//                 <Button className="mt-4" onClick={() => setCreateDialogOpen(true)}>
+//                   <Plus className="mr-2 h-4 w-4" />
+//                   Ajouter votre premier membre
+//                 </Button>
+//               </>
+//             ) : (
+//               <>
+//                 <p className="text-muted-foreground">Aucun membre ne correspond à la recherche</p>
+//                 <Button 
+//                   variant="outline"
+//                   onClick={() => setSearchQuery("")} 
+//                   className="mt-4"
+//                 >
+//                   Réinitialiser la recherche
+//                 </Button>
+//               </>
+//             )}
+//           </div>
+//         </div>
+//       ) : (
+//         <>
+//           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+//             {paginatedMembers.map((member) => (
+//               <Card key={member.id} className="hover:border-primary/50 transition-colors">
+//                 <CardContent className="p-6">
+//                   <div className="flex items-start justify-between mb-4">
+//                     {/* Avatar avec initiales */}
+//                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground text-lg font-bold">
+//                       {getInitials(member.name)}
+//                     </div>
+                    
+//                     {/* Menu actions */}
+//                     <DropdownMenu>
+//                       <DropdownMenuTrigger asChild>
+//                         <Button variant="ghost" size="icon">
+//                           <MoreVertical className="h-4 w-4" />
+//                         </Button>
+//                       </DropdownMenuTrigger>
+//                       <DropdownMenuContent align="end">
+//                         <DropdownMenuItem
+//                           onClick={() => {
+//                             setMemberToEdit(member)
+//                             setEditDialogOpen(true)
+//                           }}
+//                         >
+//                           <Edit className="mr-2 h-4 w-4" />
+//                           Modifier
+//                         </DropdownMenuItem>
+//                         <DropdownMenuItem
+//                           className="text-destructive"
+//                           onClick={() => {
+//                             setMemberToDelete(member.id)
+//                             setDeleteDialogOpen(true)
+//                           }}
+//                         >
+//                           <Trash2 className="mr-2 h-4 w-4" />
+//                           Supprimer
+//                         </DropdownMenuItem>
+//                       </DropdownMenuContent>
+//                     </DropdownMenu>
+//                   </div>
 
-//       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-//         {filteredMembers.map((member) => (
-//           <Card key={member.id} className="bg-card">
-//             <CardContent className="p-6">
-//               <div className="flex items-start justify-between mb-4">
-//                 <div className="flex items-center gap-3">
-//                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
-//                     <User className="h-6 w-6" />
+//                   {/* Informations du membre */}
+//                   <div className="space-y-3">
+//                     <div>
+//                       <h3 className="font-semibold text-lg text-foreground line-clamp-1">
+//                         {member.name}
+//                       </h3>
+//                       {member.role && (
+//                         <Badge variant="outline" className="mt-2">
+//                           <Briefcase className="mr-1 h-3 w-3" />
+//                           {member.role}
+//                         </Badge>
+//                       )}
+//                     </div>
+
+//                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
+//                       <Mail className="h-4 w-4 flex-shrink-0" />
+//                       <span className="truncate">{member.email}</span>
+//                     </div>
+
+//                     <div className="pt-3 border-t text-xs text-muted-foreground">
+//                       Ajouté le {new Date(member.createdAt).toLocaleDateString('fr-FR', {
+//                         day: 'numeric',
+//                         month: 'short',
+//                         year: 'numeric'
+//                       })}
+//                     </div>
 //                   </div>
-//                   <div>
-//                     <h3 className="font-semibold text-card-foreground">{member.name}</h3>
-//                     <p className="text-sm text-muted-foreground">{member.role}</p>
-//                   </div>
-//                 </div>
-//                 <DropdownMenu>
-//                   <DropdownMenuTrigger asChild>
-//                     <Button variant="ghost" size="icon">
-//                       <MoreVertical className="h-4 w-4" />
-//                     </Button>
-//                   </DropdownMenuTrigger>
-//                   <DropdownMenuContent align="end">
-//                     <DropdownMenuItem onClick={() => setEditMember(member)}>
-//                       <Edit className="mr-2 h-4 w-4" />
-//                       Edit Member
-//                     </DropdownMenuItem>
-//                     <DropdownMenuItem
-//                       className={member.activeTasks > 0 ? "text-muted-foreground" : "text-destructive"}
-//                       onClick={() => handleDelete(member)}
+//                 </CardContent>
+//               </Card>
+//             ))}
+//           </div>
+
+//           {/* Pagination */}
+//           {totalPages > 1 && (
+//             <div className="flex items-center justify-center gap-2 pt-4">
+//               <Button
+//                 variant="outline"
+//                 size="sm"
+//                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+//                 disabled={currentPage === 1}
+//               >
+//                 Précédent
+//               </Button>
+//               <div className="flex items-center gap-1">
+//                 {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+//                   // Logique pour afficher les pages
+//                   let pageNumber: number
+                  
+//                   if (totalPages <= 7) {
+//                     // Si 7 pages ou moins, afficher toutes
+//                     pageNumber = i + 1
+//                   } else if (currentPage <= 4) {
+//                     // Au début, afficher 1-7
+//                     pageNumber = i + 1
+//                   } else if (currentPage >= totalPages - 3) {
+//                     // À la fin, afficher les 7 dernières
+//                     pageNumber = totalPages - 6 + i
+//                   } else {
+//                     // Au milieu, centrer sur la page actuelle
+//                     pageNumber = currentPage - 3 + i
+//                   }
+
+//                   return (
+//                     <Button
+//                       key={pageNumber}
+//                       variant={currentPage === pageNumber ? "default" : "outline"}
+//                       size="sm"
+//                       onClick={() => setCurrentPage(pageNumber)}
+//                       className="w-10"
 //                     >
-//                       <Trash2 className="mr-2 h-4 w-4" />
-//                       Delete Member
-//                     </DropdownMenuItem>
-//                   </DropdownMenuContent>
-//                 </DropdownMenu>
+//                       {pageNumber}
+//                     </Button>
+//                   )
+//                 })}
 //               </div>
-
-//               {member.email && (
-//                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-//                   <Mail className="h-4 w-4" />
-//                   {member.email}
-//                 </div>
-//               )}
-
-//               <div className="flex items-center justify-between rounded-lg border border-border bg-background p-3">
-//                 <span className="text-sm text-foreground">Active Tasks</span>
-//                 <Badge variant={member.activeTasks > 0 ? "default" : "secondary"}>{member.activeTasks}</Badge>
-//               </div>
-//             </CardContent>
-//           </Card>
-//         ))}
-//       </div>
-
-//       <AddTeamMemberDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} />
-//       {editMember && (
-//         <EditTeamMemberDialog
-//           member={editMember}
-//           open={!!editMember}
-//           onOpenChange={(open) => !open && setEditMember(null)}
-//         />
+//               <Button
+//                 variant="outline"
+//                 size="sm"
+//                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+//                 disabled={currentPage === totalPages}
+//               >
+//                 Suivant
+//               </Button>
+//             </div>
+//           )}
+//         </>
 //       )}
+
+//       {/* Dialogs */}
+//       {selectedCompanyId && (
+//         <>
+//           <CreateMemberDialog
+//             open={createDialogOpen}
+//             onOpenChange={setCreateDialogOpen}
+//             companyId={selectedCompanyId}
+//           />
+
+//           {memberToEdit && (
+//             <EditMemberDialog
+//               open={editDialogOpen}
+//               onOpenChange={setEditDialogOpen}
+//               member={memberToEdit}
+//             />
+//           )}
+//         </>
+//       )}
+
+//       {/* Dialog de confirmation de suppression */}
+//       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+//         <AlertDialogContent>
+//           <AlertDialogHeader>
+//             <AlertDialogTitle>Supprimer ce membre ?</AlertDialogTitle>
+//             <AlertDialogDescription>
+//               Cette action est irréversible. Le membre sera définitivement supprimé de votre équipe.
+//             </AlertDialogDescription>
+//           </AlertDialogHeader>
+//           <AlertDialogFooter>
+//             <AlertDialogCancel>Annuler</AlertDialogCancel>
+//             <AlertDialogAction
+//               onClick={handleDelete}
+//               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+//             >
+//               Supprimer
+//             </AlertDialogAction>
+//           </AlertDialogFooter>
+//         </AlertDialogContent>
+//       </AlertDialog>
 //     </div>
 //   )
 // }
+
+
+
+
 
 
 
@@ -184,58 +396,154 @@
 "use client"
 
 import * as React from "react"
-import { Plus, MoreVertical, Edit, Trash2, Mail, User } from "lucide-react"
+import { Plus, Users, Mail, Briefcase, MoreVertical, Trash2, Edit, Search, FolderKanban, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
-import { AddTeamMemberDialog } from "@/components/add-team-member-dialog"
-import { EditTeamMemberDialog } from "@/components/edit-team-member-dialog"
+import { Input } from "@/components/ui/input"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { useMembers, useDeleteMember } from "@/hooks/use-members"
+import { useProjects } from "@/hooks/use-projects"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
+import { CreateMemberDialog } from "@/components/create-member-dialog"
+import { EditMemberDialog } from "@/components/edit-member-dialog"
+import { getProjectMembers } from "@/lib/services/project-member-service"
+import type { Member } from "@/lib/services/member-service"
+import Link from "next/link"
+
+const ITEMS_PER_PAGE = 9
 
 export function TeamView() {
-  const companyId = typeof window !== 'undefined' ? localStorage.getItem('selectedCompanyId') : null
-  const { data: members = [], isLoading } = useMembers(companyId)
-  const deleteMember = useDeleteMember()
   const { toast } = useToast()
   
+  // Récupérer companyId depuis localStorage
+  const selectedCompanyId = typeof window !== 'undefined' ? localStorage.getItem('selectedCompanyId') : null
+  
+  const { data: members = [], isLoading } = useMembers(selectedCompanyId)
+  const { data: projects = [] } = useProjects(selectedCompanyId)
+  const deleteMember = useDeleteMember()
+  
   const [searchQuery, setSearchQuery] = React.useState("")
-  const [addDialogOpen, setAddDialogOpen] = React.useState(false)
-  const [editMember, setEditMember] = React.useState<any>(null)
-  const [deleteAttempt, setDeleteAttempt] = React.useState<any>(null)
+  const [currentPage, setCurrentPage] = React.useState(1)
+  const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
+  const [projectsDialogOpen, setProjectsDialogOpen] = React.useState(false)
+  const [memberToEdit, setMemberToEdit] = React.useState<Member | null>(null)
+  const [memberToDelete, setMemberToDelete] = React.useState<string | null>(null)
+  const [selectedMemberForProjects, setSelectedMemberForProjects] = React.useState<Member | null>(null)
+  
+  // ✅ État pour stocker les projectMembers de tous les projets
+  const [allProjectMembers, setAllProjectMembers] = React.useState<Record<string, any[]>>({})
 
-  const filteredMembers = members.filter(
-    (member) =>
-      member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.role.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
-
-  const handleDelete = async (member: any) => {
-    // TODO: Vérifier si le membre a des tâches actives avant suppression
-    const hasActiveTasks = false // À implémenter avec une vraie vérification
-    
-    if (hasActiveTasks) {
-      setDeleteAttempt(member)
-      setTimeout(() => setDeleteAttempt(null), 5000)
-    } else {
-      try {
-        await deleteMember.mutateAsync(member.id)
-        toast({
-          title: "Membre supprimé",
-          description: `${member.name} a été retiré de l'équipe.`
-        })
-      } catch (error: any) {
-        toast({
-          title: "Erreur",
-          description: error.message,
-          variant: "destructive"
-        })
+  // ✅ Charger les projectMembers de tous les projets une seule fois
+  React.useEffect(() => {
+    async function loadAllProjectMembers() {
+      const projectMembersMap: Record<string, any[]> = {}
+      
+      for (const project of projects) {
+        try {
+          const projectMembers = await getProjectMembers(project.id)
+          projectMembersMap[project.id] = projectMembers
+        } catch (error) {
+          console.error(`Error loading project members for ${project.id}:`, error)
+          projectMembersMap[project.id] = []
+        }
       }
+      
+      setAllProjectMembers(projectMembersMap)
+    }
+    
+    if (projects.length > 0) {
+      loadAllProjectMembers()
+    }
+  }, [projects])
+
+  // ✅ Fonction pour compter les projets d'un membre
+  const getMemberProjectCount = (memberId: string) => {
+    return projects.filter(project => {
+      const projectMembers = allProjectMembers[project.id] || []
+      return projectMembers.some(pm => pm.memberId === memberId)
+    }).length
+  }
+
+  // ✅ Fonction pour obtenir les projets d'un membre
+  const getMemberProjects = (memberId: string) => {
+    return projects.filter(project => {
+      const projectMembers = allProjectMembers[project.id] || []
+      return projectMembers.some(pm => pm.memberId === memberId)
+    })
+  }
+
+  // Filtrage par recherche
+  const filteredMembers = members.filter((member) => {
+    const matchesSearch = 
+      member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      member.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (member.role && member.role.toLowerCase().includes(searchQuery.toLowerCase()))
+    return matchesSearch
+  })
+
+  // Pagination
+  const totalPages = Math.ceil(filteredMembers.length / ITEMS_PER_PAGE)
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+  const endIndex = startIndex + ITEMS_PER_PAGE
+  const paginatedMembers = filteredMembers.slice(startIndex, endIndex)
+
+  // Reset à la page 1 si la recherche change
+  React.useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
+
+  // Fonction pour obtenir les initiales
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(' ')
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+    }
+    return name.substring(0, 2).toUpperCase()
+  }
+
+  // Fonction de suppression
+  const handleDelete = async () => {
+    if (!memberToDelete) return
+    
+    try {
+      await deleteMember.mutateAsync(memberToDelete)
+      toast({
+        title: "Membre supprimé",
+        description: "Le membre a été supprimé avec succès."
+      })
+      setDeleteDialogOpen(false)
+      setMemberToDelete(null)
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message,
+        variant: "destructive"
+      })
     }
   }
 
@@ -243,15 +551,12 @@ export function TeamView() {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <Skeleton className="h-9 w-48 mb-2" />
-            <Skeleton className="h-4 w-96" />
-          </div>
-          <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-10 w-40" />
         </div>
-        <Skeleton className="h-10 w-full max-w-md" />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
+        <Skeleton className="h-32" />
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 9 }).map((_, i) => (
             <Skeleton key={i} className="h-48" />
           ))}
         </div>
@@ -259,11 +564,12 @@ export function TeamView() {
     )
   }
 
-  if (!companyId) {
+  if (!selectedCompanyId) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <p className="text-muted-foreground">Aucune entreprise sélectionnée</p>
+        <div className="text-center space-y-4">
+          <Users className="h-12 w-12 text-muted-foreground mx-auto" />
+          <p className="text-muted-foreground">Veuillez sélectionner une entreprise</p>
         </div>
       </div>
     )
@@ -271,45 +577,71 @@ export function TeamView() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">Membres de l'Équipe</h1>
-          <p className="text-sm text-muted-foreground mt-1">Gérez les membres de votre équipe et leurs assignations.</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+            Équipe
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Gérez les membres de votre entreprise
+          </p>
         </div>
-        <Button onClick={() => setAddDialogOpen(true)}>
+        <Button onClick={() => setCreateDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Ajouter un Membre
         </Button>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="flex-1">
+      {/* Card Résumé */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Résumé</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div>
+              <span className="text-sm text-muted-foreground">Total membres</span>
+              <p className="text-2xl font-bold">{members.length}</p>
+            </div>
+            <div>
+              <span className="text-sm text-muted-foreground">Avec rôle défini</span>
+              <p className="text-2xl font-bold">
+                {members.filter(m => m.role).length}
+              </p>
+            </div>
+            <div>
+              <span className="text-sm text-muted-foreground">Sans rôle</span>
+              <p className="text-2xl font-bold">
+                {members.filter(m => !m.role).length}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Barre de recherche */}
+      <div className="flex items-center gap-4 bg-muted/30 p-4 rounded-lg">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Rechercher par nom ou rôle..."
+            placeholder="Rechercher par nom, email ou rôle..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="max-w-md"
+            className="pl-10 bg-background"
           />
         </div>
       </div>
 
-      {deleteAttempt && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Impossible de supprimer {deleteAttempt.name} - ils ont des tâches actives. 
-            Réassignez leurs tâches avant de les supprimer.
-          </AlertDescription>
-        </Alert>
-      )}
-
+      {/* Liste des membres */}
       {filteredMembers.length === 0 ? (
         <div className="flex items-center justify-center min-h-[300px]">
           <div className="text-center">
             {members.length === 0 ? (
               <>
-                <p className="text-muted-foreground">Aucun membre dans l'équipe</p>
-                <Button onClick={() => setAddDialogOpen(true)} className="mt-4">
+                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">Aucun membre dans votre équipe</p>
+                <Button className="mt-4" onClick={() => setCreateDialogOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" />
                   Ajouter votre premier membre
                 </Button>
@@ -329,75 +661,235 @@ export function TeamView() {
           </div>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredMembers.map((member) => (
-            <Card key={member.id} className="bg-card hover:border-primary/50 transition-colors">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      <User className="h-6 w-6" />
+        <>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {paginatedMembers.map((member) => {
+              // ✅ Utiliser la fonction helper au lieu du hook
+              const memberProjects = getMemberProjects(member.id)
+              
+              return (
+                <Card key={member.id} className="hover:border-primary/50 transition-colors">
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      {/* Avatar avec initiales */}
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground text-lg font-bold">
+                        {getInitials(member.name)}
+                      </div>
+                      
+                      {/* Menu actions */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setMemberToEdit(member)
+                              setEditDialogOpen(true)
+                            }}
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            Modifier
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => {
+                              setMemberToDelete(member.id)
+                              setDeleteDialogOpen(true)
+                            }}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Supprimer
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-foreground">{member.name}</h3>
-                      <p className="text-sm text-muted-foreground">{member.role}</p>
+
+                    {/* Informations du membre */}
+                    <div className="space-y-3">
+                      <div>
+                        <h3 className="font-semibold text-lg text-foreground line-clamp-1">
+                          {member.name}
+                        </h3>
+                        {member.role && (
+                          <Badge variant="outline" className="mt-2">
+                            <Briefcase className="mr-1 h-3 w-3" />
+                            {member.role}
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Mail className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">{member.email}</span>
+                      </div>
+
+                      {/* Nombre de projets associés */}
+                      <div className="pt-3 border-t">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start text-sm"
+                          onClick={() => {
+                            setSelectedMemberForProjects(member)
+                            setProjectsDialogOpen(true)
+                          }}
+                        >
+                          <FolderKanban className="mr-2 h-4 w-4" />
+                          {memberProjects.length === 0 
+                            ? "Aucun projet"
+                            : `${memberProjects.length} projet${memberProjects.length > 1 ? 's' : ''}`
+                          }
+                          {memberProjects.length > 0 && (
+                            <Eye className="ml-auto h-4 w-4 text-muted-foreground" />
+                          )}
+                        </Button>
+                      </div>
+
+                      <div className="text-xs text-muted-foreground">
+                        Ajouté le {new Date(member.createdAt).toLocaleDateString('fr-FR', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric'
+                        })}
+                      </div>
                     </div>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setEditMember(member)}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Éditer le Membre
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => handleDelete(member)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Supprimer le Membre
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
 
-                {member.email && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                    <Mail className="h-4 w-4" />
-                    <span className="truncate">{member.email}</span>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-3">
-                  <span className="text-sm text-muted-foreground">Tâches Actives</span>
-                  <Badge variant="secondary">0</Badge>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                Précédent
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(page)}
+                    className="w-10"
+                  >
+                    {page}
+                  </Button>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Suivant
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
-      {companyId && (
+      {/* Dialogs */}
+      {selectedCompanyId && (
         <>
-          <AddTeamMemberDialog 
-            open={addDialogOpen} 
-            onOpenChange={setAddDialogOpen}
-            companyId={companyId}
+          <CreateMemberDialog
+            open={createDialogOpen}
+            onOpenChange={setCreateDialogOpen}
+            companyId={selectedCompanyId}
           />
-          {editMember && (
-            <EditTeamMemberDialog
-              member={editMember}
-              open={!!editMember}
-              onOpenChange={(open) => !open && setEditMember(null)}
+
+          {memberToEdit && (
+            <EditMemberDialog
+              open={editDialogOpen}
+              onOpenChange={setEditDialogOpen}
+              member={memberToEdit}
             />
           )}
         </>
       )}
+
+      {/* Dialog de confirmation de suppression */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce membre ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. Le membre sera définitivement supprimé de votre équipe.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog liste des projets du membre */}
+      <Dialog open={projectsDialogOpen} onOpenChange={setProjectsDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>
+              Projets de {selectedMemberForProjects?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            {selectedMemberForProjects && (() => {
+              // ✅ Utiliser la fonction helper
+              const memberProjects = getMemberProjects(selectedMemberForProjects.id)
+
+              if (memberProjects.length === 0) {
+                return (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FolderKanban className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Ce membre n'est assigné à aucun projet</p>
+                  </div>
+                )
+              }
+
+              return (
+                <div className={`space-y-3 ${memberProjects.length > 10 ? 'max-h-[400px] overflow-y-auto pr-2' : ''}`}>
+                  {memberProjects.map((project) => (
+                    <Card key={project.id} className="hover:border-primary/50 transition-colors">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-foreground">{project.name}</h4>
+                            {project.client && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Client: {project.client}
+                              </p>
+                            )}
+                          </div>
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/project/${project.id}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
