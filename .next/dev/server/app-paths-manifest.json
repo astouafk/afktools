@@ -1,0 +1,19 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/login/page": "app/login/page.js",
+  "/page": "app/page.js",
+  "/projects/[id]/analysis/[analysisId]/edit/page": "app/projects/[id]/analysis/[analysisId]/edit/page.js",
+  "/projects/[id]/analysis/[analysisId]/page": "app/projects/[id]/analysis/[analysisId]/page.js",
+  "/projects/[id]/analysis/create/page": "app/projects/[id]/analysis/create/page.js",
+  "/projects/[id]/analysis/page": "app/projects/[id]/analysis/page.js",
+  "/projects/[id]/page": "app/projects/[id]/page.js",
+  "/projects/[id]/reports/[reportId]/page": "app/projects/[id]/reports/[reportId]/page.js",
+  "/projects/[id]/reports/create/page": "app/projects/[id]/reports/create/page.js",
+  "/projects/[id]/reports/page": "app/projects/[id]/reports/page.js",
+  "/projects/[id]/team/page": "app/projects/[id]/team/page.js",
+  "/projects/page": "app/projects/page.js",
+  "/reports/[id]/page": "app/reports/[id]/page.js",
+  "/reports/page": "app/reports/page.js",
+  "/select-society/page": "app/select-society/page.js",
+  "/settings/page": "app/settings/page.js"
+}
