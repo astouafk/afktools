@@ -167,6 +167,8 @@ import {
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { History } from "lucide-react"
+
 
 const items = [
   {
@@ -186,7 +188,6 @@ const items = [
     icon: FileText,
     matchPaths: ["/reports"]
   },
-  // ✅ AJOUTER CETTE ENTRÉE
   {
     title: "Équipe",
     url: "/team",
@@ -200,9 +201,9 @@ const items = [
     matchPaths: ["/exports"]
   },
   {
-    title: "Historique",
+    title: "Historique", 
     url: "/history",
-    icon: FileText,
+    icon: History,
     matchPaths: ["/history"]
   },
   {

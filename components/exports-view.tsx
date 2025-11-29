@@ -609,6 +609,8 @@ import { generateExcelExport } from "@/lib/export-excel"
 import { generatePDFExport } from "@/lib/export-pdf"
 import { getAnalysesByProject } from "@/lib/services/analysis-service"
 import type { Analysis } from "@/lib/services/analysis-service"
+import { useCompany } from "@/hooks/use-company"
+
 
 type ContentType = 'reports' | 'analyses' | 'both' | 'single-report' | 'blockers'
 type PeriodType = 'week' | 'month' | 'quarter' | 'year'
@@ -618,6 +620,7 @@ export function ExportsView() {
   const selectedCompanyId = typeof window !== 'undefined' ? localStorage.getItem('selectedCompanyId') : null
   
   const { data: allReports = [], isLoading: reportsLoading } = useAllReports(selectedCompanyId)
+  const { data: company } = useCompany(selectedCompanyId)
   const { data: projects = [], isLoading: projectsLoading } = useProjects(selectedCompanyId)
   const { data: members = [] } = useMembers(selectedCompanyId)
   
@@ -804,16 +807,17 @@ export function ExportsView() {
     setIsGeneratingExcel(true)
     
     try {
-      await generateExcelExport({
-        reports: contentType === 'analyses' ? [] : filteredReports,
-        analyses: contentType === 'reports' || contentType === 'single-report' || contentType === 'blockers' ? [] : filteredAnalyses,
-        projects,
-        members,
-        period: periodFilter,
-        companyId: selectedCompanyId!,
-        contentType,
-        includeLogo
-      })
+        await generateExcelExport({
+            reports: contentType === 'analyses' ? [] : filteredReports,
+            analyses: contentType === 'reports' || contentType === 'single-report' || contentType === 'blockers' ? [] : filteredAnalyses,
+            projects,
+            members,
+            period: periodFilter,
+            companyId: selectedCompanyId!,
+            contentType,
+            companyName: company?.name || 'Mon Entreprise', // ✅ AJOUTER
+            companyLogo: company?.logo // ✅ AJOUTER
+          })
       
       toast({
         title: "Export Excel généré",
@@ -851,16 +855,18 @@ export function ExportsView() {
     setIsGeneratingPDF(true)
     
     try {
-      await generatePDFExport({
-        reports: contentType === 'analyses' ? [] : filteredReports,
-        analyses: contentType === 'reports' || contentType === 'single-report' || contentType === 'blockers' ? [] : filteredAnalyses,
-        projects,
-        members,
-        period: periodFilter,
-        companyId: selectedCompanyId!,
-        contentType,
-        includeLogo
-      })
+        await generatePDFExport({
+            reports: contentType === 'analyses' ? [] : filteredReports,
+            analyses: contentType === 'reports' || contentType === 'single-report' || contentType === 'blockers' ? [] : filteredAnalyses,
+            projects,
+            members,
+            period: periodFilter,
+            companyId: selectedCompanyId!,
+            contentType,
+            includeLogo,
+            companyName: company?.name || 'Mon Entreprise', // ✅ AJOUTER
+            companyLogo: company?.logo // ✅ AJOUTER
+          })
       
       toast({
         title: "Export PDF généré",

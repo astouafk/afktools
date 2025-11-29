@@ -247,7 +247,9 @@ type ExportParams = {
   members: Member[]
   period: string
   companyId: string
-  contentType: 'reports' | 'analyses' | 'both'
+  contentType: 'reports' | 'analyses' | 'both' | 'single-report' | 'blockers'
+  companyName?: string  
+  companyLogo?: string  
 }
 
 // Mapping des champs techniques vers labels français
@@ -302,7 +304,7 @@ export async function generateExcelExport(params: ExportParams) {
   // ========================================
   // FEUILLE 1 : VUE D'ENSEMBLE
   // ========================================
-  const companyName = "Mon Entreprise" // TODO: Récupérer depuis DB si stocké
+  const companyName = params.companyName || "Mon Entreprise"
   
   const totalTasks = reports.reduce((sum, r) => sum + (r.tasks?.length || 0), 0)
   const completedTasks = reports.reduce((sum, r) => 
