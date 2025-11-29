@@ -82,13 +82,11 @@ export async function getProjectMembers(projectId: string): Promise<ProjectMembe
     createdAt: doc.data().createdAt?.toDate()
   })) as ProjectMember[]
   
-  // Récupérer les détails des membres
   const companyId = projectMembers[0]?.companyId
   if (!companyId) return []
   
   const allMembers = await getMembersByCompany(companyId)
   
-  // Joindre les données
   const membersWithDetails = projectMembers.map(pm => {
     const member = allMembers.find(m => m.id === pm.memberId)
     return {

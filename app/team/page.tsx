@@ -1,29 +1,3 @@
-// //app/team/page.tsx
-// import { TopNav } from "@/components/top-nav"
-// import { AppSidebar } from "@/components/app-sidebar"
-// import { SidebarProvider } from "@/components/ui/sidebar"
-// import { TeamView } from "@/components/team-view"
-// import { AuthGuard } from "@/components/auth-guard"
-
-// export default function TeamPage() {
-//   return (
-//     <AuthGuard>
-//       <SidebarProvider>
-//         <div className="flex min-h-screen w-full bg-background">
-//           <AppSidebar />
-//           <div className="flex flex-1 flex-col">
-//             <TopNav />
-//             <main className="flex-1 p-6">
-//               <TeamView />
-//             </main>
-//           </div>
-//         </div>
-//       </SidebarProvider>
-//     </AuthGuard>
-//   )
-// }
-
-
 // app/team/page.tsx
 import { TeamView } from "@/components/team-view"
 import { TopNav } from "@/components/top-nav"
