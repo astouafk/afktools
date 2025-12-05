@@ -154,7 +154,44 @@ export function CreateReportView({ projectId }: CreateReportViewProps) {
         return
       }
 
-      // ✅ CORRECTION - Vérifier project et companyId
+      // ✅ CORRIGÉ - Validation des dates
+      const start = new Date(formData.startDate)
+      const end = new Date(formData.endDate)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0) // Reset pour comparaison uniquement sur la date
+
+      // Vérifier que la date de fin n'est pas antérieure à la date de début
+      if (end < start) {
+        toast({
+          title: "Dates invalides",
+          description: "La date de fin ne peut pas être antérieure à la date de début.",
+          variant: "destructive"
+        })
+        return
+      }
+
+      // ✅ CORRIGÉ - Durée maximum de 7 jours
+      const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+      if (diffDays > 7) {
+        toast({
+          title: "Durée invalide",
+          description: "La période ne peut pas dépasser 7 jours pour un rapport hebdomadaire.",
+          variant: "destructive"
+        })
+        return
+      }
+
+      // ✅ AJOUTÉ - Vérifier que les dates ne sont pas dans le futur
+      if (end > today) {
+        toast({
+          title: "Date future invalide",
+          description: "La date de fin ne peut pas être dans le futur.",
+          variant: "destructive"
+        })
+        return
+      }
+
+      // ✅ Vérifier project et companyId
       if (!project || !project.companyId) {
         toast({
           title: "Erreur",
@@ -164,11 +201,14 @@ export function CreateReportView({ projectId }: CreateReportViewProps) {
         return
       }
 
+      // ✅ OPTIMISÉ - Pas de setIsValidatingDuplicate avant les validations locales
+      // Les validations locales sont instantanées, pas besoin de loader
+      
       setIsValidatingDuplicate(true)
       try {
         const reportId = await createReport.mutateAsync({
           projectId,
-          companyId: project.companyId,  // ✅ AJOUTÉ
+          companyId: project.companyId,
           weekNumber: formData.weekNumber,
           startDate: formData.startDate,
           endDate: formData.endDate,
@@ -550,12 +590,12 @@ export function CreateReportView({ projectId }: CreateReportViewProps) {
         </div>
         <div>
           {currentStep < TOTAL_STEPS - 1 ? (
-            <Button 
-              onClick={handleNext}
-              disabled={isValidatingDuplicate}
-            >
-              {currentStep === 0 && isValidatingDuplicate ? "Vérification..." : "Suivant"}
-            </Button>
+         <Button 
+         onClick={handleNext}
+         disabled={isValidatingDuplicate}
+       >
+         {currentStep === 0 && isValidatingDuplicate ? "Validation en cours..." : "Suivant"}
+       </Button>
           ) : (
             <Button 
               onClick={handlePublish}

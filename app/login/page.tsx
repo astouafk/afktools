@@ -57,10 +57,10 @@ export default function LoginPage() {
           </div>
           <div className="space-y-4">
             <h1 className="text-4xl lg:text-5xl font-bold text-foreground leading-tight">
-              Gestion Technique Des Projets avec Aisance 
+              Gestion & Suivi Des Projets Digitaux 
             </h1>
             <p className="text-lg text-muted-foreground leading-relaxed">
-            Suivre l'avancement des projets, collaboration équipe et bons résultats grâce à ma plateforme complète de gestion de projet.
+            Suivre l'avancement des projets, statistiques et exports grâce à ma plateforme.
             </p>
           </div>
           <div className="grid grid-cols-3 gap-4 pt-4">
@@ -70,12 +70,12 @@ export default function LoginPage() {
             </div>
             <div className="space-y-1">
               <div className="text-3xl font-bold text-primary">3+</div>
-              <div className="text-sm text-muted-foreground">Companies</div>
+              <div className="text-sm text-muted-foreground">Entreprises</div>
             </div>
-            <div className="space-y-1">
+            {/* <div className="space-y-1">
               <div className="text-3xl font-bold text-primary">5+</div>
               <div className="text-sm text-muted-foreground">Users</div>
-            </div>
+            </div> */}
           </div>
         </div>
 

@@ -55,7 +55,8 @@ const FIELD_LABELS: Record<string, string> = {
   'database': 'Base de données',
 }
 
-export async function generatePDFExport(params: ExportParams) {
+export async function generatePDFExport(params: ExportParams): Promise<Blob> 
+  {
   const { reports, analyses, projects, members, contentType, includeLogo } = params
 
   const doc = new jsPDF()
@@ -271,7 +272,6 @@ export async function generatePDFExport(params: ExportParams) {
     // Générer fichier
     const fileName = generateFileName('pdf', params.period, projects, contentType)
     doc.save(fileName)
-    return
   }
 
   // ========================================
@@ -621,11 +621,8 @@ export async function generatePDFExport(params: ExportParams) {
     })
   }
 
-  // Générer le nom du fichier
-  const fileName = generateFileName('pdf', params.period, projects, contentType)
-  
-  // Télécharger le fichier
-  doc.save(fileName)
+  const blob = doc.output('blob')
+  return blob
 }
 
 function addFooter(doc: jsPDF) {

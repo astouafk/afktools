@@ -156,6 +156,20 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* ✅ Cacher TOUS les indicateurs Next.js en dev */
+#__next-build-watcher,
+nextjs-portal,
+[data-nextjs-dialog-overlay],
+[data-nextjs-toast],
+.__next-dev-overlay-client-overlay {
+  display: none !important;
+}
+
+/* ✅ Cacher spécifiquement l'indicateur de route en bas */
+[style*="position: fixed"][style*="bottom"] {
+  display: none !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

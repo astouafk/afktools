@@ -34,9 +34,88 @@ export interface Report {
   updatedAt: Date
 }
 
+// export async function createReport(data: {
+//   projectId: string
+//   companyId: string  
+//   weekNumber: number
+//   startDate: string
+//   endDate: string
+//   currentStep?: number
+//   summary?: string
+//   tasks?: Task[]
+//   blockers?: Blocker[]
+//   nextWeekObjectives?: string[]
+// }) {
+//   console.log('[Report Service] Creating report:', data)
+//   console.log('[Report Service] Current user:', auth.currentUser?.uid)
+  
+//   // ✅ Vérification doublon par weekNumber + companyId
+//   const existingWeekQuery = query(
+//     collection(db, 'reports'),
+//     where('projectId', '==', data.projectId),
+//     where('companyId', '==', data.companyId),
+//     where('userId', '==', auth.currentUser?.uid),
+//     where('weekNumber', '==', data.weekNumber)
+//   )
+  
+//   const existingWeekSnapshot = await getDocs(existingWeekQuery)
+//   console.log('[Report Service] Found by weekNumber:', existingWeekSnapshot.size)
+  
+//   if (!existingWeekSnapshot.empty) {
+//     const existingId = existingWeekSnapshot.docs[0].id
+//     console.log('[Report Service] Duplicate found:', existingId)
+//     throw new Error(`Un rapport existe déjà pour la semaine ${data.weekNumber} de ce projet (ID: ${existingId})`)
+//   }
+  
+//   // ✅ Vérification doublon par dates + companyId
+//   const startTimestamp = Timestamp.fromDate(new Date(data.startDate))
+//   const endTimestamp = Timestamp.fromDate(new Date(data.endDate))
+  
+//   const existingDatesQuery = query(
+//     collection(db, 'reports'),
+//     where('projectId', '==', data.projectId),
+//     where('companyId', '==', data.companyId),
+//     where('userId', '==', auth.currentUser?.uid),
+//     where('startDate', '==', startTimestamp),
+//     where('endDate', '==', endTimestamp)
+//   )
+  
+//   const existingDatesSnapshot = await getDocs(existingDatesQuery)
+//   console.log('[Report Service] Found by dates:', existingDatesSnapshot.size)
+  
+//   if (!existingDatesSnapshot.empty) {
+//     const existingId = existingDatesSnapshot.docs[0].id
+//     console.log('[Report Service] Duplicate found:', existingId)
+//     throw new Error(
+//       `Un rapport existe déjà pour la période du ${new Date(data.startDate).toLocaleDateString('fr-FR')} au ${new Date(data.endDate).toLocaleDateString('fr-FR')} (ID: ${existingId}).`
+//     )
+//   }
+  
+//   // Créer le rapport
+//   const docRef = await addDoc(collection(db, 'reports'), {
+//     projectId: data.projectId,
+//     companyId: data.companyId,  // ✅ AJOUTÉ
+//     userId: auth.currentUser?.uid,
+//     weekNumber: data.weekNumber,
+//     startDate: startTimestamp,
+//     endDate: endTimestamp,
+//     status: 'Draft',
+//     currentStep: data.currentStep || 0,
+//     summary: data.summary || '',
+//     tasks: data.tasks || [],
+//     blockers: data.blockers || [],
+//     nextWeekObjectives: data.nextWeekObjectives || [],
+//     createdAt: Timestamp.now(),
+//     updatedAt: Timestamp.now()
+//   })
+  
+//   console.log('[Report Service] Report created with ID:', docRef.id)
+//   return docRef.id
+// }
+
 export async function createReport(data: {
   projectId: string
-  companyId: string  // ✅ AJOUTÉ
+  companyId: string
   weekNumber: number
   startDate: string
   endDate: string
@@ -49,7 +128,11 @@ export async function createReport(data: {
   console.log('[Report Service] Creating report:', data)
   console.log('[Report Service] Current user:', auth.currentUser?.uid)
   
-  // ✅ Vérification doublon par weekNumber + companyId
+  // ✅ OPTIMISÉ - Préparer les timestamps une seule fois
+  const startTimestamp = Timestamp.fromDate(new Date(data.startDate))
+  const endTimestamp = Timestamp.fromDate(new Date(data.endDate))
+  
+  // ✅ OPTIMISÉ - Préparer les 2 requêtes en parallèle
   const existingWeekQuery = query(
     collection(db, 'reports'),
     where('projectId', '==', data.projectId),
@@ -57,19 +140,6 @@ export async function createReport(data: {
     where('userId', '==', auth.currentUser?.uid),
     where('weekNumber', '==', data.weekNumber)
   )
-  
-  const existingWeekSnapshot = await getDocs(existingWeekQuery)
-  console.log('[Report Service] Found by weekNumber:', existingWeekSnapshot.size)
-  
-  if (!existingWeekSnapshot.empty) {
-    const existingId = existingWeekSnapshot.docs[0].id
-    console.log('[Report Service] Duplicate found:', existingId)
-    throw new Error(`Un rapport existe déjà pour la semaine ${data.weekNumber} de ce projet (ID: ${existingId})`)
-  }
-  
-  // ✅ Vérification doublon par dates + companyId
-  const startTimestamp = Timestamp.fromDate(new Date(data.startDate))
-  const endTimestamp = Timestamp.fromDate(new Date(data.endDate))
   
   const existingDatesQuery = query(
     collection(db, 'reports'),
@@ -80,21 +150,35 @@ export async function createReport(data: {
     where('endDate', '==', endTimestamp)
   )
   
-  const existingDatesSnapshot = await getDocs(existingDatesQuery)
+  // ✅ OPTIMISÉ - Exécuter les 2 vérifications en PARALLÈLE
+  const [existingWeekSnapshot, existingDatesSnapshot] = await Promise.all([
+    getDocs(existingWeekQuery),
+    getDocs(existingDatesQuery)
+  ])
+  
+  console.log('[Report Service] Found by weekNumber:', existingWeekSnapshot.size)
   console.log('[Report Service] Found by dates:', existingDatesSnapshot.size)
   
+  // Vérifier doublon par weekNumber
+  if (!existingWeekSnapshot.empty) {
+    const existingId = existingWeekSnapshot.docs[0].id
+    console.log('[Report Service] Duplicate found:', existingId)
+    throw new Error(`Un rapport existe déjà pour la semaine ${data.weekNumber} de ce projet`)
+  }
+  
+  // Vérifier doublon par dates
   if (!existingDatesSnapshot.empty) {
     const existingId = existingDatesSnapshot.docs[0].id
     console.log('[Report Service] Duplicate found:', existingId)
     throw new Error(
-      `Un rapport existe déjà pour la période du ${new Date(data.startDate).toLocaleDateString('fr-FR')} au ${new Date(data.endDate).toLocaleDateString('fr-FR')} (ID: ${existingId}).`
+      `Un rapport existe déjà pour la période du ${new Date(data.startDate).toLocaleDateString('fr-FR')} au ${new Date(data.endDate).toLocaleDateString('fr-FR')}`
     )
   }
   
   // Créer le rapport
   const docRef = await addDoc(collection(db, 'reports'), {
     projectId: data.projectId,
-    companyId: data.companyId,  // ✅ AJOUTÉ
+    companyId: data.companyId,
     userId: auth.currentUser?.uid,
     weekNumber: data.weekNumber,
     startDate: startTimestamp,
